@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Stock Heatmaps</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px; }
+    h1 { text-align:center; margin-bottom:30px; }
+    .container { display:flex; gap:20px; margin-bottom:40px; }
+    .panel { flex:1; background:#1a1a1a; padding:15px; border-radius:10px; }
+    h2 { margin:0 0 10px 0; font-size:18px; color:#00eaff; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th,td { padding:6px; text-align:center; border-bottom:1px solid #333; }
+    th { color:#bbb; font-size:14px; }
+    td { font-size:13px; }
+    .green { color:#00ff99; }
+    .red { color:#ff4d4d; }
+    /* Original extracted sheet */
+    #table table { border-collapse: collapse; width: 100%; margin-top:20px; background:#fff; color:#000; box-shadow:0 0 10px rgba(0,0,0,0.2); }
+    #table th, #table td { border: 1px solid #ddd; padding: 8px; text-align:left; }
+    #table th { background:#0077cc; color:white; cursor:pointer; }
+    #table tr:nth-child(even){background-color:#f2f2f2;}
+    #table tr:hover {background-color:#e6f7ff;}
+  </style>
+</head>
+<body>
+  <h1>Live Stock Heatmaps</h1>
+
+  <div class="container">
+    <div class="panel">
+      <h2>High Powered Stocks 🔥</h2>
+      <table id="leftTable">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>LTP</th>
+            <th>%</th>
+            <th>Pre Open</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Intraday Boost 🚀</h2>
+      <table id="rightTable">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>LTP</th>
+            <th>%</th>
+            <th>Volume%</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2 style="color:#0077cc;">Extracted Google Sheet (Raw)</h2>
+  <div id="table">Loading...</div>
+
+  <script>
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/1eil62K4Wrf2x3MvgM5jVGBzyFwjcYYatuoYb0N61e-E/gviz/tq?tqx=out:json&gid=0";
+
+    async function loadSheetData() {
+      try {
+        const res = await fetch(SHEET_URL);
+        const text = await res.text();
+        const json = JSON.parse(text.substr(47).slice(0, -2)); // clean JSON
+        return json.table;
+      } catch (err) {
+        console.error("Error loading sheet:", err);
+        return null;
+      }
+    }
+
+    function renderHeatmaps(data) {
+      const rows = data.rows.map(r => r.c.map(cell => (cell && ("v" in cell) ? cell.v : "")));
+
+      const leftBody = document.querySelector("#leftTable tbody");
+      const rightBody = document.querySelector("#rightTable tbody");
+      leftBody.innerHTML = "";
+      rightBody.innerHTML = "";
+
+      // --- Left Heatmap: sort by Pre Open (col 13) ---
+      let leftRows = [...rows.slice(1)];
+      leftRows.sort((a, b) => parseFloat(b[13] || 0) - parseFloat(a[13] || 0));
+      leftRows = leftRows.slice(0, 20); // top 20
+
+      leftRows.forEach(r => {
+        const symbol = r[0] || "";
+        const ltp = r[4] || "";
+        const percent = parseFloat(r[8]) || 0;
+        const preOpen = r[13] || "";
+        leftBody.innerHTML += `<tr>
+          <td>${symbol}</td>
+          <td>${ltp}</td>
+          <td class="${percent < 0 ? 'red' : 'green'}">${percent}</td>
+          <td>${preOpen}</td>
+        </tr>`;
+      });
+
+      // --- Right Heatmap: sort by Volume% (col 12) ---
+      let rightRows = [...rows.slice(1)];
+      rightRows.sort((a, b) => parseFloat(b[12] || 0) - parseFloat(a[12] || 0));
+      rightRows = rightRows.slice(0, 20); // top 20
+
+      rightRows.forEach(r => {
+        const symbol = r[0] || "";
+        const ltp = r[4] || "";
+        const percent = parseFloat(r[8]) || 0;
+        const volumePct = r[12] || "";
+        rightBody.innerHTML += `<tr>
+          <td>${symbol}</td>
+          <td>${ltp}</td>
+          <td class="${percent < 0 ? 'red' : 'green'}">${percent}</td>
+          <td>${volumePct}</td>
+        </tr>`;
+      });
+    }
+
+    function renderTable(data, sortBy = null, ascending = true) {
+      const cols = data.cols.map(c => c.label || c.id);
+      let rows = data.rows.map(r => r.c.map(cell => (cell && ("v" in cell) ? cell.v : "")));
+
+      if (sortBy !== null) {
+        const idx = cols.indexOf(sortBy);
+        if (idx !== -1) {
+          rows.sort((a, b) => {
+            if (a[idx] === b[idx]) return 0;
+            return ascending ? (a[idx] > b[idx] ? 1 : -1) : (a[idx] < b[idx] ? 1 : -1);
+          });
+        }
+      }
+
+      const table = document.createElement('table');
+      const header = table.insertRow();
+      cols.forEach(c => {
+        const th = document.createElement('th');
+        th.innerText = c;
+        th.onclick = () => {
+          const currentlyAsc = th.dataset.asc === 'true';
+          renderTable(data, c, !currentlyAsc);
+          th.dataset.asc = (!currentlyAsc).toString();
+        };
+        header.appendChild(th);
+      });
+
+      rows.forEach(row => {
+        const tr = table.insertRow();
+        row.forEach(cell => {
+          const td = tr.insertCell();
+          td.innerText = cell;
+        });
+      });
+
+      const container = document.getElementById('table');
+      container.innerHTML = '';
+      container.appendChild(table);
+    }
+
+    async function refreshData() {
+      const data = await loadSheetData();
+      if (data) {
+        renderHeatmaps(data);
+        renderTable(data);
+      }
+    }
+
+    refreshData();
+    setInterval(refreshData, 60000);
+  </script>
+</body>
+</html>
