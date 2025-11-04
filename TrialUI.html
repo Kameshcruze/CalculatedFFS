@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Intraday Stock Selector — Dynamic Index + Screener</title>
+<style>
+  /* ---------- Base / Theme ---------- */
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',sans-serif;}
+  body{background:#0b0c10;color:#c5c6c7;line-height:1.45;-webkit-font-smoothing:antialiased;}
+  a{text-decoration:none;color:inherit;}
+
+  /* ---------- Nav ---------- */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#121417;border-bottom:1px solid #1f2833;position:sticky;top:0;z-index:1000;}
+  .left{display:flex;align-items:center;gap:18px;}
+  .logo{font-weight:700;color:#66fcf1;font-size:1.15rem;}
+  .menu{display:flex;gap:8px;}
+  .menu button{background:transparent;border:none;padding:8px 12px;border-radius:6px;color:#c5c6c7;cursor:pointer;font-weight:600;}
+  .menu button.active{background:#0f8899;color:#041217;}
+  .nav-right{display:flex;align-items:center;gap:12px;color:#9fe7e2;font-weight:600;}
+  .current-time{font-size:.95rem;color:#cdeef0;}
+
+  /* ---------- Container ---------- */
+  .container{width:94%;max-width:1400px;margin:18px auto;display:flex;flex-direction:column;gap:18px;padding-bottom:60px;}
+
+  /* ========== INDEX / HEATMAP (dynamic mosaic) ========== */
+  #indexSection{display:none;}
+  .heatmap-wrap{background:#13171a;border:1px solid #1e2427;padding:14px;border-radius:10px;}
+  .heatmap-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;}
+  .heatmap-info{color:#9fe7e2;font-weight:600;}
+  .heatmap-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:flex-start;
+    /* center layout */
+    justify-content:flex-start;
+  }
+
+  /* Each tile is sized programmatically in JS - base visual style here */
+  .tile{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    padding:10px;
+    border-radius:6px;
+    color:#041217;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    position:relative;
+    overflow:visible;
+  }
+  .tile:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,0.6);opacity:0.98;}
+  .tile .name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tile .chg{margin-top:6px;font-size:13px;}
+  /* tooltip overlay (visible on hover for extra detail) */
+  .tile .tt{
+    position:absolute;left:8px;top:8px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 8px;border-radius:6px;font-size:12px;display:none;z-index:30;
+  }
+  .tile:hover .tt{display:block;}
+
+  /* ========== Screener (keeps finalized layout) ========== */
+  #screenerSection{display:block;}
+  .top-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:900px){.top-row{grid-template-columns:1fr;}}
+  .panel{background:#13171a;border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(0,0,0,0.45);border:1px solid #1e2427;}
+  h2{color:#66fcf1;text-align:center;margin-bottom:6px;}
+  .header-line{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
+  .meta{color:#9fe7e2;font-size:.85rem;}
+  .search-wrap{display:flex;align-items:center;gap:6px;}
+  input.search{padding:6px 10px;border-radius:6px;border:none;background:#0f1214;color:#c5c6c7;font-size:.88rem;width:170px;}
+  input.search:focus{outline:1px solid #45a29e;}
+  .clear-btn{background:none;border:none;color:#66fcf1;font-size:1.1rem;cursor:pointer;display:none;}
+  .clear-btn:hover{color:#ff6b6b;}
+
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.92rem;table-layout:fixed;}
+  th,td{padding:8px 10px;border-bottom:1px solid rgba(69,162,158,0.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  th{background:#0b0c10;color:#66fcf1;font-size:.9rem;text-align:center;}
+  td{color:#e2e2e2;text-align:center;}
+  td:first-child,th:first-child{text-align:left;width:200px;}
+  tbody{display:block;max-height:420px;overflow-y:auto;}
+  thead,tbody tr{display:table;width:100%;table-layout:fixed;}
+  tbody::-webkit-scrollbar{width:6px;}
+  tbody::-webkit-scrollbar-thumb{background:#45a29e66;border-radius:6px;}
+  tr:hover{background:#0d1012;transition:background .2s ease;}
+  .green{color:#00ff99;font-weight:700;}
+  .red{color:#ff6b6b;font-weight:700;}
+  .sector-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  @media(max-width:1200px){.sector-grid{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:760px){.sector-grid{grid-template-columns:1fr;} }
+  .sector-panel{padding:10px;border-radius:8px;background:#13171a;border:1px solid #1e2427;}
+  .sector-panel h3{color:#66fcf1;text-align:center;font-size:.95rem;margin-bottom:5px;}
+  .sector-panel .last-upd{text-align:center;color:#9fe7e2;font-size:.82rem;margin-bottom:6px;}
+
+  .stock-link{color:#66fcf1;cursor:pointer;font-weight:600;}
+  .stock-link:hover{color:#00bcd4;text-decoration:underline;}
+</style>
+</head>
+<body>
+<nav>
+  <div class="left">
+    <div class="logo">📊 Intraday Stock Selector</div>
+    <div class="menu" role="navigation">
+      <button id="btnDashboard">Dashboard</button>
+      <button id="btnIndex" class="active">Index</button>
+      <button id="btnScreener">Screener</button>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div>🕒</div><div id="navCurrentTime" class="current-time">--:--:--</div>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- INDEX (DYNAMIC HEATMAP) -->
+  <section id="indexSection">
+    <div class="heatmap-wrap">
+      <div class="heatmap-header">
+        <div class="heatmap-info">NIFTY 50 Dynamic Heatmap — size = strength, left → gainers, right → losers</div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="color:#9fe7e2">Last Updated: <span id="indexLast">--:--:--</span></div>
+          <div style="color:#9fe7e2">Auto-refresh: 30s</div>
+        </div>
+      </div>
+      <div id="heatmapGrid" class="heatmap-grid" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- SCREENER -->
+  <section id="screenerSection">
+    <div class="top-row">
+      <div class="panel" id="highPanel">
+        <h2>High Powered Stocks 🔥</h2>
+        <div class="header-line">
+          <div class="meta">Last Updated: <span id="highLast">--:--:--</span></div>
+          <div class="search-wrap">
+            <input type="text" class="search" id="searchHigh" placeholder="🔍 Search symbol...">
+            <button class="clear-btn" id="clearHigh">×</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Stock Name</th><th>LTP</th><th>%</th><th>Pre Open</th><th>Intraday Boost (Col J)</th></tr></thead>
+          <tbody id="highBody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="boostPanel">
+        <h2>Intraday Boost 🚀</h2>
+        <div class="header-line">
+          <div class="meta">Last Updated: <span id="boostLast">--:--:--</span></div>
+          <div class="search-wrap">
+            <input type="text" class="search" id="searchBoost" placeholder="🔍 Search symbol...">
+            <button class="clear-btn" id="clearBoost">×</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Stock Name</th><th>LTP</th><th>%</th><th>Volume%</th><th>Col J</th></tr></thead>
+          <tbody id="boostBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <section id="screeners" class="sector-grid"></section>
+  </section>
+</div>
+
+<script>
+/* ========== Config ========== */
+const SHEET_ID = "1eil62K4Wrf2x3MvgM5jVGBzyFwjcYYatuoYb0N61e-E";
+const URL_MAIN = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=0`;
+const URL_SHEET2 = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=528507233`;
+const URL_SECTOR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=2068381642`;
+const REFRESH_MS = 30000;
+const SCALE_MAX = 5; // ±5% scaling range
+
+/* NIFTY50 symbols (uppercase) */
+const NIFTY50 = [
+  "ADANIENT","AMARAJABAT","AMBUJACEM","APOLLOHOSP","ASIANPAINT","AXISBANK","BAJAJ-AUTO","BAJFINANCE","BAJAJFINSV",
+  "BPCL","BRITANNIA","CIPLA","COALINDIA","DIVISLAB","DRREDDY","EICHERMOT","GRASIM","HCLTECH","HDFC",
+  "HDFCBANK","HDFCLIFE","HEROMOTOCO","HINDALCO","HINDUNILVR","ICICIBANK","INDUSINDBK","ITC","JSWSTEEL",
+  "KOTAKBANK","LT","M&M","MARUTI","NESTLEIND","NTPC","ONGC","POWERGRID","RELIANCE","SBILIFE","SBIN",
+  "SUNPHARMA","TATACONSUM","TATAMOTORS","TATASTEEL","TCS","ULTRACEMCO","UPL","WIPRO","BHARTIARTL","MOTHERSUMI"
+];
+/* Edit NIFTY50 above if your sheet uses slightly different tickers. */
+
+/* Helpers */
+function safe(c){ return c && ('v' in c) ? c.v : ""; }
+function fTimeShort(d){ return d.toLocaleTimeString('en-IN',{hour12:true}); }
+function fTimeLong(d){ return d.toLocaleTimeString('en-US',{hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+/* TradingView opener */
+function openTV(symbol){
+  const s = (symbol||"").toString().trim().toUpperCase();
+  if(!s) return;
+  const url = `https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(s)}&interval=5`;
+  window.open(url, '_blank');
+}
+
+/* load google sheet (gviz JSON) */
+async function loadSheet(url){
+  const res = await fetch(url);
+  const txt = await res.text();
+  return JSON.parse(txt.substr(47).slice(0,-2)).table;
+}
+
+/* Color interpolation - gradient: deep red -> gray -> deep green
+   Input: pct in -100..100 (we use -5..+5 scale) */
+function colorForPct(pct){
+  const max = SCALE_MAX;
+  const v = clamp(pct, -max, max) / max; // -1 .. 1
+  // We'll blend: for negative (v<0): between red and gray; for positive: gray to green
+  if(v < 0){
+    // t goes 0 (gray) -> 1 (deep red) when v goes 0 -> -1
+    const t = Math.abs(v);
+    // interpolate between gray (47,47,47) and deep red (#c62828 => rgb 198,40,40)
+    const r = Math.round(47 + (198-47)*t);
+    const g = Math.round(47 + (40-47)*t);
+    const b = Math.round(47 + (40-47)*t);
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const t = v;
+    // interpolate between gray (47,47,47) and deep green (#2e7d32 => rgb 46,125,50)
+    const r = Math.round(47 + (46-47)*t);
+    const g = Math.round(47 + (125-47)*t);
+    const b = Math.round(47 + (50-47)*t);
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+/* Size computation:
+   area proportional to abs(pct). We'll map abs(pct) (0..SCALE_MAX) to area scale (min .. max).
+   We compute width = baseW * sqrt(1 + scaleFactor * normalizedAbsPct) to keep aspect reasonable. */
+function sizeForPct(pct){
+  const absPct = Math.min(Math.abs(pct), SCALE_MAX);
+  const norm = absPct / SCALE_MAX; // 0..1
+  const base = 110; // base width px
+  const extra = 220; // extra width at max pct
+  const width = Math.round(base + extra * norm);
+  const height = Math.round(80 + 120 * norm); // base height 80 -> bigger with intensity
+  return {width, height};
+}
+
+/* ---------- Build Heatmap (dynamic mosaic-like) ---------- */
+async function buildIndex(mainTable, sheet2RowsMap){
+  const rows = mainTable.rows.slice(1).map(r=> (r.c||[]).map(safe));
+  // map by symbol uppercase
+  const mapBySym = {};
+  rows.forEach(r => {
+    const s = (r[0]||"").toString().trim().toUpperCase();
+    if(s) mapBySym[s] = r;
+  });
+
+  // pick NIFTY50 rows in order; if missing, ignore
+  const data = [];
+  NIFTY50.forEach(sym => {
+    const r = mapBySym[sym];
+    if(r) {
+      const pct = (parseFloat(r[8]) || 0) * 100;
+      const ltp = r[4] || "";
+      data.push({symbol: sym, pct, ltp, row: r});
+    }
+  });
+
+  // fallback: if none found, take top 50 from sheet
+  const dataRows = (data.length ? data : rows.slice(0,50).map(r => ({ symbol:(r[0]||"").toString().trim().toUpperCase(), pct: (parseFloat(r[8])||0)*100, ltp: r[4] || "", row:r })));
+
+  // sort by pct descending (largest gain to largest loss)
+  dataRows.sort((a,b) => b.pct - a.pct);
+
+  // compute max absolute pct for normalization (cap at SCALE_MAX)
+  const maxAbs = Math.max(...dataRows.map(d => Math.min(Math.abs(d.pct), SCALE_MAX)), 1);
+
+  const grid = document.getElementById('heatmapGrid');
+  grid.innerHTML = '';
+
+  // create tiles
+  dataRows.forEach(d => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    const pct = clamp(d.pct, -SCALE_MAX, SCALE_MAX);
+    const bg = colorForPct(pct);
+    const {width, height} = sizeForPct(pct);
+    // style sizing and color
+    tile.style.width = width + 'px';
+    tile.style.height = height + 'px';
+    tile.style.background = bg;
+    tile.style.color = '#041217';
+    // content
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = d.symbol;
+    const chgEl = document.createElement('div');
+    chgEl.className = 'chg';
+    chgEl.textContent = (d.pct >= 0 ? '+' : '') + d.pct.toFixed(2) + '%';
+    // tooltip box for hover details
+    const tt = document.createElement('div');
+    tt.className = 'tt';
+    tt.innerText = `${d.symbol} · LTP: ${d.ltp || '—'} · ${d.pct>=0?'+':''}${d.pct.toFixed(2)}%`;
+    tile.appendChild(tt);
+    tile.appendChild(nameEl);
+    tile.appendChild(chgEl);
+    tile.title = `${d.symbol} ${d.pct>=0?'+':''}${d.pct.toFixed(2)}% — LTP: ${d.ltp || '—'}`;
+    tile.onclick = () => openTV(d.symbol);
+    grid.appendChild(tile);
+  });
+
+  document.getElementById('indexLast').textContent = fTimeLong(new Date());
+}
+
+/* ---------- Screener rendering (finalized) ---------- */
+function addSearch(input,clearBtn,body){
+  input.addEventListener("input",()=>{
+    const t=input.value.toUpperCase();
+    clearBtn.style.display = t ? "inline" : "none";
+    [...body.rows].forEach(r=> r.style.display = (r.cells[0].innerText.toUpperCase().includes(t) ? "" : "none"));
+  });
+  clearBtn.onclick = ()=>{ input.value=""; clearBtn.style.display="none"; [...body.rows].forEach(r=>r.style.display=""); };
+}
+
+function stockLinkHTML(symbol){
+  const sym = (symbol||"").toString().trim().toUpperCase();
+  return `<span class="stock-link" onclick="window.open('https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(sym)}&interval=5','_blank')">${sym}</span>`;
+}
+
+/* Render high & boost & sectors (using same logic as before) */
+function renderHigh(rows, s2) {
+  const body = document.getElementById('highBody'); body.innerHTML = '';
+  rows.sort((a,b)=>parseFloat(b[13]||0)-parseFloat(a[13]||0));
+  rows.slice(0,200).forEach(r=>{
+    const pct=(parseFloat(r[8])||0)*100;
+    const sym=(r[0]||"").toString().trim(), ltp=r[4]||"", pre=r[13]||"";
+    const match = s2.find(x => ((x[0]||"").toString().trim().toUpperCase() === sym.toString().trim().toUpperCase()));
+    const colJ = match ? match[9] : "";
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td title="${sym}">${stockLinkHTML(sym)}</td><td>${ltp}</td><td class="${pct<0?'red':'green'}">${pct.toFixed(2)}%</td><td>${pre}</td><td>${colJ}</td>`;
+    body.appendChild(tr);
+  });
+  document.getElementById('highLast').textContent = fTimeLong(new Date());
+  addSearch(document.getElementById('searchHigh'), document.getElementById('clearHigh'), body);
+}
+
+function renderBoost(rows, s2) {
+  const body = document.getElementById('boostBody'); body.innerHTML = '';
+  rows.sort((a,b)=>parseFloat(b[12]||0)-parseFloat(a[12]||0));
+  rows.slice(0,200).forEach((r,i)=>{
+    const pct=(parseFloat(r[8])||0)*100;
+    const vol=(parseFloat(r[12])||0)*100;
+    const colJ=(s2[i+1] && s2[i+1][9]) || "";
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td title="${r[0]}">${stockLinkHTML(r[0])}</td><td>${r[4]}</td><td class="${pct<0?'red':'green'}">${pct.toFixed(2)}%</td><td>${vol.toFixed(2)}%</td><td>${colJ}</td>`;
+    body.appendChild(tr);
+  });
+  document.getElementById('boostLast').textContent = fTimeLong(new Date());
+  addSearch(document.getElementById('searchBoost'), document.getElementById('clearBoost'), body);
+}
+
+function renderSectors(rows, s2, sectors) {
+  const container = document.getElementById('screeners'); container.innerHTML = '';
+  const grouped = {};
+  Object.entries(sectors).forEach(([sec,list])=>{
+    rows.filter(r => list.includes((r[0]||"").toUpperCase())).forEach(r => {
+      (grouped[sec] = grouped[sec] || []).push(r);
+    });
+  });
+  const ordered = Object.keys(grouped).sort();
+  ordered.forEach(sec => {
+    const list = grouped[sec];
+    list.sort((a,b)=>parseFloat(b[12]||0)-parseFloat(a[12]||0));
+    const div = document.createElement('div'); div.className='sector-panel';
+    div.innerHTML = `<h3>${sec}</h3><div class="last-upd">Last Updated: ${fTimeLong(new Date())}</div>
+      <table><thead><tr><th>Stock Name</th><th>LTP</th><th>%</th><th>Volume%</th><th>Info</th></tr></thead><tbody></tbody></table>`;
+    const tb = div.querySelector('tbody');
+    list.forEach(r=>{
+      const pct=(parseFloat(r[8])||0)*100;
+      const vol=(parseFloat(r[12])||0)*100;
+      const colJ=(s2.find(x=> (x[0]||"").toString().trim().toUpperCase() === (r[0]||"").toString().trim().toUpperCase()) || [])[9] || "";
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td title="${r[0]}">${stockLinkHTML(r[0])}</td><td>${r[4]}</td><td class="${pct<0?'red':'green'}">${pct.toFixed(2)}%</td><td>${vol.toFixed(2)}%</td><td>${colJ}</td>`;
+      tb.appendChild(tr);
+    });
+    container.appendChild(div);
+  });
+}
+
+/* ---------- Full build (index + screener) ---------- */
+async function buildAll(){
+  try{
+    const [mainTbl, sheet2Tbl, sectorTbl] = await Promise.all([loadSheet(URL_MAIN), loadSheet(URL_SHEET2), loadSheet(URL_SECTOR)]);
+    const mainRows = mainTbl.rows.slice(1).map(r => (r.c||[]).map(safe));
+    const s2 = (sheet2Tbl && sheet2Tbl.rows) ? sheet2Tbl.rows.map(r => (r.c||[]).map(safe)) : [];
+    // sectors map
+    const sectors = {};
+    (sectorTbl.rows||[]).forEach(r=>{
+      const sym = (safe(r.c[0])||"").toString().trim().toUpperCase();
+      const sec = (safe(r.c[3])||"UNCLASSIFIED").toString().trim().toUpperCase();
+      if(sec && sec!=="UNCLASSIFIED") (sectors[sec] = sectors[sec] || []).push(sym);
+    });
+
+    // build heatmap (use mainTbl raw to preserve order & full metadata)
+    await buildIndex(mainTbl, s2);
+
+    // render screener lists
+    renderHigh(mainRows, s2);
+    renderBoost(mainRows, s2);
+    renderSectors(mainRows, s2, sectors);
+  } catch (err){
+    console.error('buildAll error', err);
+  }
+}
+
+/* initial + periodic refresh */
+buildAll();
+setInterval(buildAll, REFRESH_MS);
+
+/* ---------- Nav toggles ---------- */
+const idxBtn = document.getElementById('btnIndex');
+const scrBtn = document.getElementById('btnScreener');
+const dashBtn = document.getElementById('btnDashboard');
+const indexSection = document.getElementById('indexSection');
+const screenerSection = document.getElementById('screenerSection');
+
+function setActive(button){
+  document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+  button.classList.add('active');
+}
+
+idxBtn.onclick = () => { setActive(idxBtn); indexSection.style.display='block'; screenerSection.style.display='none'; };
+scrBtn.onclick = () => { setActive(scrBtn); indexSection.style.display='none'; screenerSection.style.display='block'; };
+dashBtn.onclick = () => { setActive(dashBtn); indexSection.style.display='none'; screenerSection.style.display='block'; };
+
+/* default = Index */
+idxBtn.click();
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Stock Heatmaps</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px; }
+    h1 { text-align:center; margin-bottom:10px; }
+
+    /* Time Display */
+    .time-container {
+      text-align:right;
+      font-size:14px;
+      color:#00eaff;
+      margin-bottom:20px;
+    }
+
+    .container { display:flex; gap:20px; margin-bottom:40px; }
+    .panel { flex:1; background:#1a1a1a; padding:15px; border-radius:10px; }
+    h2 { margin:0 0 10px 0; font-size:18px; color:#00eaff; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th,td { padding:6px; text-align:center; border-bottom:1px solid #333; }
+    th { color:#bbb; font-size:14px; }
+    td { font-size:13px; }
+    .green { color:#00ff99; }
+    .red { color:#ff4d4d; }
+
+    /* hidden raw tables */
+    #table, #table2 { display:none; }
+  </style>
+</head>
+<body>
+  <h1>Live Stock Heatmaps</h1>
+
+  <div class="time-container">
+    ⏰ Current Time: <span id="currentTime">--:--:--</span> |
+    🔄 Last Refresh: <span id="lastRefresh">--:--:--</span>
+  </div>
+
+  <div class="container">
+    <div class="panel">
+      <h2>High Powered Stocks 🔥</h2>
+      <table id="leftTable">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>LTP</th>
+            <th>%</th>
+            <th>Pre Open</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Intraday Boost 🚀</h2>
+      <table id="rightTable">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>LTP</th>
+            <th>%</th>
+            <th>Volume%</th>
+            <th>Col J (Sheet 2)</th> <!-- new column -->
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="table"></div>
+  <div id="table2"></div>
+
+  <script>
+    const SHEET_URL_1 = "https://docs.google.com/spreadsheets/d/1eil62K4Wrf2x3MvgM5jVGBzyFwjcYYatuoYb0N61e-E/gviz/tq?tqx=out:json&gid=0";
+    const SHEET_URL_2 = "https://docs.google.com/spreadsheets/d/1eil62K4Wrf2x3MvgM5jVGBzyFwjcYYatuoYb0N61e-E/gviz/tq?tqx=out:json&gid=528507233";
+
+    const currentTimeEl = document.getElementById("currentTime");
+    const lastRefreshEl = document.getElementById("lastRefresh");
+
+    // 🕒 Format time in 12-hour format with seconds
+    function formatTime(date) {
+      return date.toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    // ⏰ Update current time every second
+    setInterval(() => {
+      currentTimeEl.textContent = formatTime(new Date());
+    }, 1000);
+
+    async function loadSheetData(url) {
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const json = JSON.parse(text.substr(47).slice(0, -2)); // clean JSON
+        return json.table;
+      } catch (err) {
+        console.error("Error loading sheet:", err);
+        return null;
+      }
+    }
+
+    function renderHeatmaps(data1, data2) {
+      const rows1 = data1.rows.map(r => r.c.map(cell => (cell && ("v" in cell) ? cell.v : "")));
+      const rows2 = data2 ? data2.rows.map(r => r.c.map(cell => (cell && ("v" in cell) ? cell.v : ""))) : [];
+
+      const leftBody = document.querySelector("#leftTable tbody");
+      const rightBody = document.querySelector("#rightTable tbody");
+      leftBody.innerHTML = "";
+      rightBody.innerHTML = "";
+
+      // --- Left Heatmap ---
+      let leftRows = [...rows1.slice(1)];
+      leftRows.sort((a, b) => parseFloat(b[13] || 0) - parseFloat(a[13] || 0));
+      leftRows = leftRows.slice(0, 20);
+      leftRows.forEach(r => {
+        const symbol = r[0] || "";
+        const ltp = r[4] || "";
+        const percent = parseFloat(r[8]) || 0;
+        const preOpen = r[13] || "";
+        leftBody.innerHTML += `<tr>
+          <td>${symbol}</td>
+          <td>${ltp}</td>
+          <td class="${percent < 0 ? 'red' : 'green'}">${percent}</td>
+          <td>${preOpen}</td>
+        </tr>`;
+      });
+
+      // --- Right Heatmap ---
+      let rightRows = [...rows1.slice(1)];
+      rightRows.sort((a, b) => parseFloat(b[12] || 0) - parseFloat(a[12] || 0));
+      rightRows = rightRows.slice(0, 20);
+
+      rightRows.forEach((r, idx) => {
+        const symbol = r[0] || "";
+        const ltp = r[4] || "";
+        const percent = parseFloat(r[8]) || 0;
+        const volumePct = r[12] || "";
+        const colJ = rows2[idx + 1] ? (rows2[idx + 1][9] || "") : ""; // Col J = index 9
+        rightBody.innerHTML += `<tr>
+          <td>${symbol}</td>
+          <td>${ltp}</td>
+          <td class="${percent < 0 ? 'red' : 'green'}">${percent}</td>
+          <td>${volumePct}</td>
+          <td>${colJ}</td>
+        </tr>`;
+      });
+    }
+
+    async function refreshData() {
+      const data1 = await loadSheetData(SHEET_URL_1);
+      const data2 = await loadSheetData(SHEET_URL_2);
+      if (data1 && data2) {
+        renderHeatmaps(data1, data2);
+        lastRefreshEl.textContent = formatTime(new Date());
+      }
+    }
+
+    refreshData();
+    setInterval(refreshData, 30000);
+  </script>
+</body>
+</html>
