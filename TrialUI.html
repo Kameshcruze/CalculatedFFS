@@ -97,6 +97,31 @@
 
   .stock-link{color:#66fcf1;cursor:pointer;font-weight:600;}
   .stock-link:hover{color:#00bcd4;text-decoration:underline;}
+
+  /* ---------- Fix sector table column widths ---------- */
+.sector-panel table {
+  table-layout: auto !important;
+}
+
+.sector-panel th,
+.sector-panel td {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.sector-panel td:first-child {
+  width: 180px; /* enough for full stock names */
+}
+
+.sector-panel td:nth-child(2),
+.sector-panel td:nth-child(3),
+.sector-panel td:nth-child(4),
+.sector-panel td:nth-child(5) {
+  width: auto; /* let them expand naturally */
+}
+
+
 </style>
 </head>
 <body>
