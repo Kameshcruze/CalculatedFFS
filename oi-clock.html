@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OI Clock — Option Chain Viewer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --bg:#0b0c10; --muted:#9aa4b2; --accent:#56f0b1; --danger:#ff6b6b;
+}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#05060a,#0b0c10);color:#e6eef6;font-family:Inter,system-ui,'Segoe UI',Roboto,Arial;}
+.container{max-width:1200px;margin:18px auto;padding:12px;}
+.header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.title{font-size:20px;margin:0}
+.nav{display:flex;gap:8px}
+.aBtn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:var(--muted);text-decoration:none}
+.grid{display:grid;grid-template-columns:1fr 360px;gap:12px;margin-top:14px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03)}
+.small{color:var(--muted);font-size:13px}
+.controls{display:flex;gap:8px;align-items:center}
+.canvasWrap{height:520px}
+.stat{font-weight:700}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 class="title">OI Clock — Option Chain Viewer</h1>
+        <div class="small">Select index to view option-chain OI (Calls vs Puts)</div>
+      </div>
+      <div class="nav">
+        <a href="TrialUI.html" class="aBtn">Screener</a>
+        <a href="sector-scope.html" class="aBtn">Sector Scope</a>
+        <a href="oi-clock.html" class="aBtn">OI Clock</a>
+        <div class="controls">
+          <select id="selIndex" class="aBtn">
+            <option value="NIFTY">NIFTY</option>
+            <option value="BANKNIFTY">BANKNIFTY</option>
+            <option value="FINNIFTY">FINNIFTY</option>
+          </select>
+          <select id="interval" class="aBtn">
+            <option value="60000">60s</option>
+            <option value="90000" selected>90s</option>
+            <option value="120000">120s</option>
+          </select>
+          <button id="refreshBtn" class="aBtn">Refresh</button>
+          <div id="status" class="small" style="margin-left:8px">Idle</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div class="small">Option Chain — Per Strike (Top view)</div><div id="updated" style="font-weight:700;margin-top:6px">--</div></div>
+          <div style="text-align:right"><div class="small">Net Position</div><div id="netPos" class="stat">--</div></div>
+        </div>
+
+        <div style="margin-top:12px" class="canvasWrap">
+          <canvas id="oiCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="small">Distribution</div>
+        <div style="margin-top:10px"><canvas id="donut" width="300" height="200"></canvas></div>
+        <div style="margin-top:12px">
+          <div class="small" style="color:#56f0b1">↑ Total Put OI (Bullish)</div><div id="totalPut" class="stat">--</div>
+          <div class="small" style="margin-top:8px;color:#ff6b6b">↓ Total Call OI (Bearish)</div><div id="totalCall" class="stat">--</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="small">Hover a strike to view exact Call/Put OI. The chart shows calls in red (right) and puts in green (left) from centerline.</div>
+
+    <div style="height:30px"></div>
+    <div style="text-align:center" class="small">Auto-refresh every interval • Powered by Cloudflare Proxy • Keep an eye on OI rotation</div>
+  </div>
+
+<script>
+/* ======= CONFIG ======= */
+const proxy = 'https://nse-proxy-akon.kameshravirks.workers.dev/?url=';
+const OPTION_API = idx => proxy + encodeURIComponent(`https://www.nseindia.com/api/option-chain-indices?symbol=${idx}`);
+let donutChart = null;
+let oiChart = null;
+let timer = null;
+
+/* ======= HELPERS ======= */
+function setStatus(t){ document.getElementById('status').textContent = t; }
+
+async function fetchJson(url){
+  const r = await fetch(url, { headers:{ accept:'application/json' }});
+  const txt = await r.text();
+  try { return JSON.parse(txt); } catch(e){ return null; }
+}
+
+/* ======= MERGE TWO NEAREST EXPIRIES ======= */
+function mergeNearestTwoExpiries(records) {
+  if (!Array.isArray(records) || records.length === 0) return [];
+  function parseExpiry(s){ const d = new Date(s); return isNaN(d)?null:d; }
+  const expiryMap = new Map();
+  for (const r of records) {
+    const e = r.expiryDate ?? r.expiry ?? null;
+    if (e && !expiryMap.has(e)) expiryMap.set(e, { raw:e, parsed:parseExpiry(e) });
+  }
+  const expiryArr = Array.from(expiryMap.values()).sort((a,b)=>(a.parsed||Infinity)-(b.parsed||Infinity));
+  const nearestTwo = expiryArr.slice(0,2).map(e=>e.raw);
+  const filtered = records.filter(r=>nearestTwo.includes(r.expiryDate));
+  const merged = {};
+  for (const r of filtered) {
+    const strike = Number(r.strikePrice ?? r.strike);
+    if (isNaN(strike)) continue;
+    const ce = Number(r.CE?.openInterest ?? 0);
+    const pe = Number(r.PE?.openInterest ?? 0);
+    if (!merged[strike]) merged[strike] = { strike, ceOI: 0, peOI: 0 };
+    merged[strike].ceOI += ce; merged[strike].peOI += pe;
+  }
+  return Object.values(merged).sort((a,b)=>a.strike-b.strike);
+}
+
+/* ======= FILL MISSING STRIKES ======= */
+function fillMissingStrikes(rows, idx){
+  if (idx !== 'NIFTY' || !rows.length) return rows;
+  const step = 50;
+  const all = [];
+  const min = Math.floor(rows[0].strike/step)*step;
+  const max = Math.ceil(rows[rows.length-1].strike/step)*step;
+  for(let s=min;s<=max;s+=step) all.push(s);
+  const map = Object.fromEntries(rows.map(r=>[r.strike,r]));
+  return all.map(s=>map[s]||{strike:s,ceOI:0,peOI:0});
+}
+
+/* ======= RENDER OI CHART ======= */
+function renderOIChart(rows, atmStrike, idx){
+  const labels = rows.map(r=>Number(r.strike).toLocaleString('en-IN'));
+  const callVals = rows.map(r=>r.ceOI);
+  const putVals = rows.map(r=>-r.peOI);
+  let tol = 25; if(idx==='BANKNIFTY'||idx==='FINNIFTY') tol=100;
+  const atmIndex = rows.findIndex(r=>Math.abs(r.strike-atmStrike)<=tol);
+  const ctx = document.getElementById('oiCanvas').getContext('2d');
+  if(oiChart) oiChart.destroy();
+  oiChart = new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Puts (Bullish)',data:putVals,backgroundColor:c=>c.dataIndex===atmIndex?'rgba(86,240,177,0.9)':'rgba(78,225,161,0.6)',borderColor:c=>c.dataIndex===atmIndex?'#00ffbb':null,borderWidth:c=>c.dataIndex===atmIndex?2:0,borderRadius:6},
+      {label:'Calls (Bearish)',data:callVals,backgroundColor:c=>c.dataIndex===atmIndex?'rgba(255,107,107,0.9)':'rgba(255,107,107,0.6)',borderColor:c=>c.dataIndex===atmIndex?'#ff7070':null,borderWidth:c=>c.dataIndex===atmIndex?2:0,borderRadius:6}
+    ]},
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{color:'#cfe6e6'}},
+        tooltip:{callbacks:{
+          title:i=>'Strike: '+Number(i[0].label.replace(/,/g,'')).toLocaleString('en-IN'),
+          label:c=>c.dataset.label+': '+Math.abs(c.parsed.x).toLocaleString()
+        }}
+      },
+      scales:{
+        x:{ticks:{color:'#cfe6e6',callback:v=>Math.abs(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.03)'}},
+        y:{ticks:{color:'#cfe6e6'},grid:{display:false}}
+      }
+    }
+  });
+}
+
+/* ======= RENDER DONUT ======= */
+function renderDonut(totalCall,totalPut){
+  const ctx=document.getElementById('donut').getContext('2d');
+  if(donutChart)donutChart.destroy();
+  donutChart=new Chart(ctx,{type:'doughnut',
+    data:{labels:['Puts (Bullish)','Calls (Bearish)'],
+    datasets:[{data:[totalPut,totalCall],
+      backgroundColor:['rgba(78,225,161,0.9)','rgba(255,107,107,0.9)']}]},
+    options:{plugins:{legend:{position:'bottom',labels:{color:'#cfe6e6'}}}}});
+}
+
+/* ======= MAIN UPDATE ======= */
+async function updateOI(){
+  const idx=document.getElementById('selIndex').value||'NIFTY';
+  setStatus('Updating '+idx+'...');
+  try{
+    const json=await fetchJson(OPTION_API(idx));
+    const recs=json?.records?.data||[];
+    if(!recs.length){setStatus('No data');return;}
+    let rows=mergeNearestTwoExpiries(recs);
+    rows=fillMissingStrikes(rows,idx);
+    const underlying=json?.records?.underlyingValue??null;
+    let filtered=rows;
+    if(underlying){
+      const strikes=rows.map(r=>r.strike);
+      const idxATM=strikes.findIndex(s=>s>=underlying);
+      const start=Math.max(0,idxATM-10),end=Math.min(rows.length,idxATM+10);
+      filtered=rows.slice(start,end);
+    }
+    renderOIChart(filtered,underlying||0,idx);
+    const totals=rows.reduce((a,r)=>{a.call+=r.ceOI;a.put+=r.peOI;return a;},{call:0,put:0});
+    renderDonut(totals.call,totals.put);
+    document.getElementById('totalCall').textContent=totals.call.toLocaleString();
+    document.getElementById('totalPut').textContent=totals.put.toLocaleString();
+    document.getElementById('netPos').textContent='Bulls: '+totals.put.toLocaleString()+' | Bears: '+totals.call.toLocaleString();
+    document.getElementById('updated').textContent='Updated: '+new Date().toLocaleTimeString();
+    setStatus('Updated ✓ via Cloudflare');
+  }catch(e){
+    console.error(e);setStatus('Error loading');
+  }
+}
+
+/* ======= INIT ======= */
+document.getElementById('refreshBtn').addEventListener('click',updateOI);
+document.getElementById('selIndex').addEventListener('change',()=>{clearInterval(timer);updateOI();timer=setInterval(updateOI,+document.getElementById('interval').value);});
+document.getElementById('interval').addEventListener('change',()=>{clearInterval(timer);timer=setInterval(updateOI,+document.getElementById('interval').value);});
+timer=setInterval(updateOI,90000);
+updateOI();
+</script>
+</body>
+</html>
