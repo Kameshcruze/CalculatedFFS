@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sector Scope — Intraday Market Bias</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --bg:#0b0c10; --muted:#9aa4b2; --accent:#56f0b1; --danger:#ff6b6b; --positive:#4da6ff;
+}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#05060a,#0b0c10);color:#e6eef6;font-family:Inter,system-ui,'Segoe UI',Roboto,Arial;}
+.container{max-width:1200px;margin:18px auto;padding:12px;}
+.header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.title{font-size:20px;margin:0}
+.nav{display:flex;gap:8px}
+.aBtn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:var(--muted);text-decoration:none}
+.grid{margin-top:14px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03)}
+.small{color:var(--muted);font-size:13px}
+.canvasWrap{height:520px}
+.stat{font-weight:700}
+.scoreBox{font-size:14px;margin-top:4px;color:#9aa4b2}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 class="title">Sector Scope — Intraday Market Bias</h1>
+        <div class="small">Live % Change (Today) for Major Nifty Sectoral Indices</div>
+      </div>
+      <div class="nav">
+        <a href="TrialUI.html" class="aBtn">Screener</a>
+        <a href="sector-scope.html" class="aBtn">Sector Scope</a>
+        <a href="oi-clock.html" class="aBtn">OI Clock</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="small">Indices & Sectors — % Change (Today)</div>
+            <div id="updated" style="font-weight:700;margin-top:6px">--</div>
+          </div>
+          <div style="text-align:right">
+            <div class="small">Market Bias</div>
+            <div id="biasLabel" class="stat">--</div>
+            <div id="biasScore" class="scoreBox">Score: --</div>
+          </div>
+        </div>
+        <div style="margin-top:12px" class="canvasWrap">
+          <canvas id="sectorCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="small">Bars represent today's % change of sectoral indices. Hover to see sector name & details.</div>
+    <div style="height:30px"></div>
+    <div style="text-align:center" class="small">Auto-updates via Cloudflare proxy • Built with Chart.js Dark Theme</div>
+  </div>
+
+<script>
+const proxy = 'https://nse-proxy-akon.kameshravirks.workers.dev/?url=';
+const NSE_SECTOR_URL = proxy + encodeURIComponent('https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%2050');
+let sectorChart = null;
+
+/* 🧠 Sector Name & Descriptions */
+const sectorDetails = {
+  "NIFTY AUTO": ["Auto", "Automobile & auto-ancillaries"],
+  "NIFTY BANK": ["Bank", "Banking / Financial Institutions"],
+  "NIFTY CHEMICALS": ["Chemicals", "Chemicals & allied industries"],
+  "NIFTY ENERGY": ["Energy", "Oil, Gas, Power"],
+  "NIFTY FMCG": ["FMCG", "Fast Moving Consumer Goods"],
+  "NIFTY FINANCIAL SERVICES": ["Financial Services", "Banks, NBFCs, Insurance"],
+  "NIFTY HEALTHCARE INDEX": ["Healthcare", "Healthcare & Pharma"],
+  "NIFTY IT": ["IT", "Information Technology & Software"],
+  "NIFTY MEDIA": ["Media", "Media, Entertainment & Broadcasting"],
+  "NIFTY METAL": ["Metal", "Metals & Mining"],
+  "NIFTY OIL & GAS": ["Oil & Gas", "Oil & Gas Sector"],
+  "NIFTY PHARMA": ["Pharma", "Pharmaceuticals"],
+  "NIFTY PRIVATE BANK": ["Private Bank", "Private Sector Banks"],
+  "NIFTY PSU BANK": ["PSU Bank", "Public Sector Banks"],
+  "NIFTY REALTY": ["Realty", "Real-estate & Construction"]
+};
+
+/* 🔍 Fetch & process sector data */
+async function fetchSectors(){
+  try{
+    const res = await fetch(NSE_SECTOR_URL);
+    const json = await res.json();
+    const data = json?.data || [];
+
+    const filtered = data.filter(d => sectorDetails[d.index]);
+    const mapped = filtered.map(d => ({
+      key: d.index,
+      name: sectorDetails[d.index][0],
+      desc: sectorDetails[d.index][1],
+      chg: parseFloat(d.percChange ?? 0)
+    }));
+
+    // Sort positives desc, negatives asc
+    const sorted = [
+      ...mapped.filter(d => d.chg >= 0).sort((a,b)=>b.chg-a.chg),
+      ...mapped.filter(d => d.chg < 0).sort((a,b)=>a.chg-b.chg)
+    ];
+
+    renderSectors(sorted);
+    updateBias(mapped);
+
+    document.getElementById('updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+  }catch(e){
+    console.error(e);
+    document.getElementById('biasLabel').textContent = 'Error';
+  }
+}
+
+/* 📊 Render Sector Chart */
+function renderSectors(rows){
+  const ctx = document.getElementById('sectorCanvas').getContext('2d');
+  if(sectorChart) sectorChart.destroy();
+
+  const labels = rows.map(r => r.name);
+  const values = rows.map(r => r.chg);
+  const descs = rows.map(r => r.desc);
+
+  sectorChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '% Change',
+        data: values,
+        backgroundColor: values.map(v => v >= 0 ? 'rgba(77,166,255,0.85)' : 'rgba(255,107,107,0.85)'),
+        borderColor: values.map(v => v >= 0 ? '#4da6ff' : '#ff7070'),
+        borderWidth: 1.5,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e1e1e',
+          titleColor: '#ffffff',
+          bodyColor: '#cfe6e6',
+          callbacks: {
+            title: ctx => rows[ctx[0].dataIndex].name,
+            label: ctx => [
+              `${rows[ctx.dataIndex].desc}`,
+              `% Change: ${ctx.formattedValue}%`
+            ]
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#cfe6e6', callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        x: {
+          ticks: { color: '#cfe6e6', font: { size: 12, weight: 500 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+/* ⚖️ Calculate Bias & Score */
+function updateBias(data){
+  const positive = data.filter(d => d.chg > 0.25).length;
+  const negative = data.filter(d => d.chg < -0.25).length;
+  const score = positive - negative;
+
+  document.getElementById('biasScore').textContent = `Score: +${positive} / -${negative}`;
+
+  if(score > 3){
+    document.getElementById('biasLabel').textContent = 'Bullish';
+    document.getElementById('biasLabel').style.color = '#56f0b1';
+  }else if(score < -3){
+    document.getElementById('biasLabel').textContent = 'Bearish';
+    document.getElementById('biasLabel').style.color = '#ff6b6b';
+  }else{
+    document.getElementById('biasLabel').textContent = 'Neutral';
+    document.getElementById('biasLabel').style.color = '#9aa4b2';
+  }
+}
+
+/* ⏱ Auto-refresh */
+fetchSectors();
+setInterval(fetchSectors, 60000);
+</script>
+</body>
+</html>
