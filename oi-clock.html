@@ -288,8 +288,9 @@ async function updateOI(){
 document.getElementById('refreshBtn').addEventListener('click',updateOI);
 document.getElementById('selIndex').addEventListener('change',()=>{clearInterval(timer);updateOI();timer=setInterval(updateOI,+document.getElementById('interval').value);});
 document.getElementById('interval').addEventListener('change',()=>{clearInterval(timer);timer=setInterval(updateOI,+document.getElementById('interval').value);});
-timer=setInterval(updateOI,90000);
+timer=setInterval(updateOI,60000);
 updateOI();
 </script>
 </body>
 </html>
+
