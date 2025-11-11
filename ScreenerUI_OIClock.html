@@ -29,6 +29,46 @@
   /* ---------- Container ---------- */
   .container{width:94%;max-width:1400px;margin:18px auto;display:flex;flex-direction:column;gap:18px;padding-bottom:60px;}
 /* ---------- Fullscreen layout for OI Clock ---------- */
+/* ---------- Restore bordered panels for Screener (full-width) ---------- */
+#screenerSection {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 2%;
+  background: #0b0c10;
+}
+
+/* Panel visual style inside full-width screener (overrides the previous "no-border" rule) */
+#screenerSection .panel {
+  background: #13171a;
+  border: 1px solid rgba(255,255,255,0.04);   /* subtle thin border */
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+/* Keep tables readable and horizontally scrollable on small screens */
+#screenerSection .panel table { width: 100%; }
+#screenerSection .panel > div, 
+#screenerSection .panel table { overflow-x: auto; }
+
+/* Make the two-column top row maintain gap and responsive collapse */
+#screenerSection .top-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  #screenerSection .top-row {
+    grid-template-columns: 1fr;
+  }
+  #screenerSection { padding: 12px; }
+  #screenerSection .panel { padding: 10px; }
+  #screenerSection table { font-size: 0.86rem; }
+}
+
+  
 #oiClockSection {
   background:#0b0c10;
   position:relative;
