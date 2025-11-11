@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OI Clock — Login</title>
+<style>
+  /* ===== General Setup ===== */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+  }
+
+  body {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    background: linear-gradient(135deg, #0d1117, #000);
+  }
+
+  /* ===== Live Animated Background ===== */
+  .background {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: float 15s infinite ease-in-out;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0) scale(1); opacity: 0.3; }
+    50% { transform: translateY(-60px) scale(1.2); opacity: 0.6; }
+    100% { transform: translateY(0) scale(1); opacity: 0.3; }
+  }
+
+  .circle:nth-child(1) {
+    width: 250px; height: 250px;
+    background: radial-gradient(circle, #0078ff55, transparent);
+    top: 10%; left: 15%;
+    animation-delay: 0s;
+  }
+
+  .circle:nth-child(2) {
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, #00c6ff55, transparent);
+    bottom: 15%; right: 10%;
+    animation-delay: 3s;
+  }
+
+  .circle:nth-child(3) {
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, #005eff55, transparent);
+    top: 60%; left: 25%;
+    animation-delay: 6s;
+  }
+
+  /* ===== Glassmorphism Container ===== */
+  .login-container {
+    position: relative;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 45px 50px;
+    width: 360px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    animation: fadeIn 1.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .login-container h2 {
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+    letter-spacing: 1px;
+    color: #fff;
+  }
+
+  .input-box {
+    margin-bottom: 25px;
+  }
+
+  .input-box input {
+    width: 100%;
+    padding: 12px 15px;
+    border: none;
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #fff;
+    transition: 0.3s;
+  }
+
+  .input-box input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 12px rgba(0, 140, 255, 0.4);
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #0078ff, #00c6ff);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+  }
+
+  .login-btn:hover {
+    background: linear-gradient(135deg, #00c6ff, #0078ff);
+    transform: scale(1.03);
+    box-shadow: 0 0 12px rgba(0, 140, 255, 0.5);
+  }
+
+  .error {
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .footer-text {
+    margin-top: 25px;
+    font-size: 0.85rem;
+    color: #999;
+  }
+
+  @media (max-width: 420px) {
+    .login-container {
+      width: 90%;
+      padding: 30px 25px;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Background Animation -->
+  <div class="background">
+    <div class="circle"></div>
+    <div class="circle"></div>
+    <div class="circle"></div>
+  </div>
+
+  <!-- Login Box -->
+  <div class="login-container">
+    <h2>Login</h2>
+    <div class="input-box">
+      <input type="text" id="username" placeholder="Username" autocomplete="off" />
+    </div>
+    <div class="input-box">
+      <input type="password" id="password" placeholder="Password" />
+    </div>
+    <button class="login-btn" onclick="validateLogin()">Login</button>
+    <p class="error" id="error-msg">Invalid username or password</p>
+    <div class="footer-text">© 2025 Intraday Stock Selector</div>
+  </div>
+
+  <script>
+    function validateLogin() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorMsg = document.getElementById("error-msg");
+
+      const validUsername = "admin";
+      const validPassword = "1234";
+
+      if (username === validUsername && password === validPassword) {
+        errorMsg.style.display = "none";
+        window.location.href = "oi-clock.html";
+      } else {
+        errorMsg.style.display = "block";
+      }
+    }
+
+    // Allow Enter key to trigger login
+    document.addEventListener("keypress", function(e) {
+      if (e.key === "Enter") validateLogin();
+    });
+  </script>
+
+</body>
+</html>
