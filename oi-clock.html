@@ -167,14 +167,69 @@ function renderOIChart(rows, atmStrike, idx){
 }
 
 /* ======= RENDER DONUT ======= */
-function renderDonut(totalCall,totalPut){
-  const ctx=document.getElementById('donut').getContext('2d');
-  if(donutChart)donutChart.destroy();
-  donutChart=new Chart(ctx,{type:'doughnut',
-    data:{labels:['Puts (Bullish)','Calls (Bearish)'],
-    datasets:[{data:[totalPut,totalCall],
-      backgroundColor:['rgba(78,225,161,0.9)','rgba(255,107,107,0.9)']}]},
-    options:{plugins:{legend:{position:'bottom',labels:{color:'#cfe6e6'}}}}});
+function renderDonut(totalCall, totalPut) {
+  const ctx = document.getElementById('donut').getContext('2d');
+  if (donutChart) donutChart.destroy();
+
+  const total = totalCall + totalPut;
+
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Puts (Bullish)', 'Calls (Bearish)'],
+      datasets: [{
+        data: [totalPut, totalCall],
+        backgroundColor: [
+          'rgba(78,225,161,0.9)',  // green = puts
+          'rgba(255,107,107,0.9)'  // red = calls
+        ],
+        borderColor: '#ffffff',     // ⚪ white border for professional look
+        borderWidth: 2.2,           // clean thin white edge
+        cutout: '50%'               // 🔧 reduced hole for thicker donut
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false, // ⚙️ auto-fit container height
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#cfe6e6' } },
+        tooltip: { enabled: true }
+      },
+      layout: {
+        padding: { top: 10, bottom: 10 }
+      }
+    },
+    plugins: [{
+      id: 'donutLabels',
+      afterDraw(chart) {
+        const { ctx } = chart;
+        const meta = chart.getDatasetMeta(0);
+        const data = chart.data.datasets[0].data;
+        const total = data.reduce((a, b) => a + b, 0);
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `${Math.round(chart.width / 25)}px 'Poppins', Inter, sans-serif`;
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 5;
+        ctx.lineWidth = 2;
+
+        meta.data.forEach((arc, i) => {
+          const angle = (arc.startAngle + arc.endAngle) / 2;
+          const radius = (arc.outerRadius + arc.innerRadius) / 2.3;
+          const x = arc.x + Math.cos(angle) * radius;
+          const y = arc.y + Math.sin(angle) * radius;
+
+          const pct = ((data[i] / total) * 100).toFixed(1) + '%';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(pct, x, y);
+        });
+
+        ctx.restore();
+      }
+    }]
+  });
 }
 
 /* ======= MAIN UPDATE ======= */
