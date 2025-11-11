@@ -97,18 +97,36 @@ async function fetchJson(url){
   try { return JSON.parse(txt); } catch(e){ return null; }
 }
 
-/* ======= MERGE TWO NEAREST EXPIRIES ======= */
-function mergeNearestTwoExpiries(records) {
+/* ======= MERGE EXPIRIES (Dynamic by Index) ======= */
+function mergeNearestTwoExpiries(records, idx) {
   if (!Array.isArray(records) || records.length === 0) return [];
-  function parseExpiry(s){ const d = new Date(s); return isNaN(d)?null:d; }
+
+  function parseExpiry(s) {
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+
+  // Collect & sort expiry dates
   const expiryMap = new Map();
   for (const r of records) {
     const e = r.expiryDate ?? r.expiry ?? null;
-    if (e && !expiryMap.has(e)) expiryMap.set(e, { raw:e, parsed:parseExpiry(e) });
+    if (e && !expiryMap.has(e)) expiryMap.set(e, { raw: e, parsed: parseExpiry(e) });
   }
-  const expiryArr = Array.from(expiryMap.values()).sort((a,b)=>(a.parsed||Infinity)-(b.parsed||Infinity));
-  const nearestTwo = expiryArr.slice(0,2).map(e=>e.raw);
-  const filtered = records.filter(r=>nearestTwo.includes(r.expiryDate));
+
+  const expiryArr = Array.from(expiryMap.values())
+    .sort((a, b) => (a.parsed || Infinity) - (b.parsed || Infinity));
+
+  // 🧩 Logic difference by Index
+  let targetExpiries = [];
+  if (idx === 'NIFTY') {
+    targetExpiries = expiryArr.slice(0, 2).map(e => e.raw); // merge 2 nearest
+  } else {
+    targetExpiries = expiryArr.slice(0, 1).map(e => e.raw); // only nearest expiry
+  }
+
+  const filtered = records.filter(r => targetExpiries.includes(r.expiryDate));
+
+  // Merge strikes (or just pass through if single expiry)
   const merged = {};
   for (const r of filtered) {
     const strike = Number(r.strikePrice ?? r.strike);
@@ -116,10 +134,13 @@ function mergeNearestTwoExpiries(records) {
     const ce = Number(r.CE?.openInterest ?? 0);
     const pe = Number(r.PE?.openInterest ?? 0);
     if (!merged[strike]) merged[strike] = { strike, ceOI: 0, peOI: 0 };
-    merged[strike].ceOI += ce; merged[strike].peOI += pe;
+    merged[strike].ceOI += ce;
+    merged[strike].peOI += pe;
   }
-  return Object.values(merged).sort((a,b)=>a.strike-b.strike);
+
+  return Object.values(merged).sort((a, b) => a.strike - b.strike);
 }
+
 
 /* ======= FILL MISSING STRIKES ======= */
 function fillMissingStrikes(rows, idx){
@@ -240,7 +261,7 @@ async function updateOI(){
     const json=await fetchJson(OPTION_API(idx));
     const recs=json?.records?.data||[];
     if(!recs.length){setStatus('No data');return;}
-    let rows=mergeNearestTwoExpiries(recs);
+    let rows = mergeNearestTwoExpiries(recs, idx);
     rows=fillMissingStrikes(rows,idx);
     const underlying=json?.records?.underlyingValue??null;
     let filtered=rows;
