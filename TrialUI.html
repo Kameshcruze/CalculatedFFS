@@ -81,7 +81,9 @@
   .clear-btn{background:none;border:none;color:#66fcf1;font-size:1.1rem;cursor:pointer;display:none;}
   .clear-btn:hover{color:#ff6b6b;}
 
-  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.92rem;table-layout:fixed;}
+
+  /*removed for css allignment in mobile version  */
+  /* table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.92rem;table-layout:fixed;}
   th,td{padding:8px 10px;border-bottom:1px solid rgba(69,162,158,0.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   th{background:#0b0c10;color:#66fcf1;font-size:.9rem;text-align:center;}
   td{color:#e2e2e2;text-align:center;}
@@ -92,7 +94,95 @@
   tbody::-webkit-scrollbar-thumb{background:#45a29e66;border-radius:6px;}
   tr:hover{background:#0d1012;transition:background .2s ease;}
   .green{color:#00ff99;font-weight:700;}
-  .red{color:#ff6b6b;font-weight:700;}
+  .red{color:#ff6b6b;font-weight:700;} */
+    /*removed for css allignment in mobile version  */
+
+  /*added for css allignment in mobile version  */
+/* ---------- Improved table layout & readability ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-size: 0.92rem;
+  table-layout: auto !important;
+}
+
+th, td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(69, 162, 158, 0.12);
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+th {
+  background: #0b0c10;
+  color: #66fcf1;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+td {
+  color: #e2e2e2;
+  text-align: center;
+}
+
+/* ✅ Make stock names full width, not truncated */
+td:first-child, th:first-child {
+  text-align: left;
+  min-width: 180px;
+  white-space: nowrap;
+}
+
+/* ✅ Responsive table: scroll horizontally on small screens */
+.panel table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.panel table thead,
+.panel table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: auto;
+}
+
+tbody {
+  display: block;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+tbody::-webkit-scrollbar {
+  width: 6px;
+}
+
+tbody::-webkit-scrollbar-thumb {
+  background: #45a29e66;
+  border-radius: 6px;
+}
+
+tr:hover {
+  background: #0d1012;
+  transition: background 0.2s ease;
+}
+
+.green {
+  color: #00ff99;
+  font-weight: 700;
+}
+
+.red {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+    /*added for css allignment in mobile version  */
+
+
+
+  
   .sector-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
   @media(max-width:1200px){.sector-grid{grid-template-columns:repeat(2,1fr);} }
   @media(max-width:760px){.sector-grid{grid-template-columns:1fr;} }
@@ -467,4 +557,5 @@ idxBtn.click();
 </script>
 </body>
 </html>
+
 
