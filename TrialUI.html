@@ -453,6 +453,9 @@ setInterval(buildAll, REFRESH_MS);
 const idxBtn = document.getElementById('btnIndex');
 const scrBtn = document.getElementById('btnScreener');
 const dashBtn = document.getElementById('btnDashboard');
+  dashBtn.addEventListener('click', () => {
+  window.location.href = 'oi-clock.html';
+});
 const indexSection = document.getElementById('indexSection');
 const screenerSection = document.getElementById('screenerSection');
 
@@ -470,6 +473,7 @@ idxBtn.click();
 </script>
 </body>
 </html>
+
 
 
 
