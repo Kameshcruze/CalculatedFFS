@@ -28,6 +28,31 @@
 
   /* ---------- Container ---------- */
   .container{width:94%;max-width:1400px;margin:18px auto;display:flex;flex-direction:column;gap:18px;padding-bottom:60px;}
+/* ---------- Fullscreen layout for OI Clock ---------- */
+#oiClockSection {
+  background:#0b0c10;
+  position:relative;
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:0 2%;
+}
+#oiClockSection .card {
+  border:none;
+  background:transparent;
+  box-shadow:none;
+}
+#oiClockSection .grid-oi {
+  grid-template-columns: 1fr 420px;
+  gap:20px;
+  margin-top:16px;
+}
+@media(max-width:900px){
+  #oiClockSection .grid-oi {
+    grid-template-columns:1fr;
+  }
+}
+
 
   /* ========== INDEX / HEATMAP (dynamic mosaic) ========== */
   #indexSection{display:none;}
@@ -146,6 +171,39 @@
 
   /* small spacing for OI section inside main container to match look */
   #oiClockSection .card { margin-bottom: 6px; }
+
+  /* ---------- Full Width Screener + OI Clock ---------- */
+#screenerSection, #oiClockSection {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 2%;
+  background: #0b0c10;
+}
+
+/* Remove inner panel shadows for clean edge-to-edge look */
+#screenerSection .panel, #oiClockSection .card {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Make tables & grids responsive */
+@media(max-width: 900px) {
+  .top-row, .sector-grid {
+    grid-template-columns: 1fr !important;
+  }
+  table {
+    font-size: 0.85rem;
+  }
+  th, td {
+    padding: 6px 8px;
+  }
+  input.search {
+    width: 100%;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -189,6 +247,7 @@
       <div id="heatmapGrid" class="heatmap-grid" aria-live="polite"></div>
     </div>
   </section>
+</div>
 
   <!-- SCREENER -->
   <section id="screenerSection" style="display:none;">
@@ -228,7 +287,7 @@
   </section>
 
   <!-- OI CLOCK (merged as a separate section, visible only when nav button clicked) -->
-  <section id="oiClockSection">
+  <section id="oiClockSection" style="margin:0;padding:0;width:100%;max-width:none;">
     <div class="card">
       <div class="oi-header" style="align-items:center;justify-content:space-between">
         <div>
@@ -285,7 +344,7 @@
       <div style="text-align:center" class="small">Auto-refresh every interval • Powered by Cloudflare Proxy • Keep an eye on OI rotation</div>
     </div>
   </section>
-</div>
+
 
 <script>
 /* ========== Combined JS ========== */
