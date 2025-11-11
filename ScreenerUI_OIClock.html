@@ -221,13 +221,21 @@
   background: #0b0c10;
 }
 
-/* Remove inner panel shadows for clean edge-to-edge look */
-#screenerSection .panel, #oiClockSection .card {
+
+/* Keep OI Clock clean, but restore Screener borders */
+#oiClockSection .card {
   border: none;
   background: transparent;
   box-shadow: none;
 }
 
+/* Screener panels — visible border + shadow */
+#screenerSection .panel {
+  background: #13171a;
+  border: 1px solid #1e2427;  /* visible border */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+}
 /* Make tables & grids responsive */
 @media(max-width: 900px) {
   .top-row, .sector-grid {
