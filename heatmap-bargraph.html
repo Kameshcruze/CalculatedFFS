@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NIFTY Heatmaps — Screener UI (Smart Tooltip + Dynamic Glow)</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<style>
+  :root {
+    --bg: #0b0c10;
+    --accent: #66fcf1;
+  }
+  * {
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+  body {
+    background: var(--bg);
+    color: #e6e7e8;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+
+  .titleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    flex: 0 0 auto;
+  }
+  .title {
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+  }
+  .refreshAllBtn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--accent);
+    padding: 6px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+    flex: 1;
+    width: 100%;
+    height: calc(100vh - 60px);
+    padding: 10px;
+  }
+  @media (max-width: 1100px) {
+    html, body { overflow: auto; }
+    .grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto auto;
+      height: auto;
+    }
+  }
+
+  .panel {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.03));
+    border: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hdr {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+  .hdr h3 {
+    margin: 0;
+    color: var(--accent);
+    font-size: 14px;
+  }
+  .viz {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.18s ease;
+    z-index: 1000;
+    min-width: 160px;
+    padding: 8px 10px;
+    background: rgba(10,10,10,0.95);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 13px;
+    border-radius: 6px;
+    transform: translateY(-6px);
+  }
+  #tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .tile-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transition: all 0.25s ease;
+    border: 1px solid transparent;
+  }
+
+  .tile-name { font-weight: 800; color: #fff; line-height: 1; }
+  .tile-pct { font-weight: 700; margin-top: 4px; }
+
+  .sector-card { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 10px; }
+  .sector-card .header h1 { font-size: 15px; margin: 0; color: #fff; }
+  .sector-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9b9b9b; padding-top: 6px; }
+  canvas { width: 100%!important; height: 100%!important; display: block; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="titleRow">
+      <div class="title">Market Heatmaps</div>
+      <button class="refreshAllBtn" id="refreshAllBtn">⟳ Refresh All</button>
+    </div>
+
+    <div class="grid">
+      <div class="panel" id="panel-nifty50">
+        <div class="hdr"><h3>NIFTY 50</h3></div>
+        <div class="viz" id="viz-nifty50"></div>
+      </div>
+
+      <div class="panel" id="panel-banknifty">
+        <div class="hdr"><h3>NIFTY BANK</h3></div>
+        <div class="viz" id="viz-banknifty"></div>
+      </div>
+
+      <div class="panel" id="panel-finnifty">
+        <div class="hdr"><h3>NIFTY FIN SERVICE</h3></div>
+        <div class="viz" id="viz-finnifty"></div>
+      </div>
+
+      <div class="panel" id="panel-sectors">
+        <div class="hdr"><h3>Sector Performance</h3></div>
+        <div class="viz" id="sectorPanel">
+          <div class="sector-card" id="sectorCard">
+            <div class="header"><h1>Market Overview</h1></div>
+            <div id="sectorCanvasWrap" style="flex:1;min-height:0;">
+              <canvas id="sectorChart"></canvas>
+            </div>
+            <div class="sector-meta">
+              <span id="lastUpdated">Last updated: --</span>
+              <button id="refreshBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#ccc;border-radius:8px;padding:4px 8px;cursor:pointer;">Refresh</button>
+            </div>
+            <div id="errorBox" style="color:#ff6b6b;font-size:12px;display:none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+
+<script>
+const PROXY_URL = 'https://nse-proxy-akon.kameshravirks.workers.dev/?url=';
+const REFRESH_MS = 30000;
+const INDEXES = { nifty50: 'NIFTY 50', banknifty: 'NIFTY BANK', finnifty: 'NIFTY FIN SERVICE' };
+
+function proxyUrl(target){ return PROXY_URL + encodeURIComponent(target); }
+function num(x){ const v=parseFloat(x); return isNaN(v)?NaN:v; }
+
+function normalizeRow(it){
+  const symbol=(it.symbol||it.tradingsymbol||it.metadata?.symbol||it.SYMBOL||'').toString().trim();
+  const ltp=num(it.lastPrice??it.ltp??it.LTP);
+  let pct=num(it.percentChange??it.pChange??it['%change']);
+  if(isNaN(pct)&&!isNaN(ltp)&&(it.previousClose||it.prevClose||it.previous)){
+    const prev=num(it.previousClose??it.prevClose??it.previous);
+    if(!isNaN(prev)&&prev!==0)pct=((ltp-prev)/prev)*100;
+  }
+  return{symbol,ltp:isNaN(ltp)?null:ltp,percentChange:pct||0};
+}
+
+async function fetchMembers(indexName){
+  const url=proxyUrl(`https://www.nseindia.com/api/equity-stockIndices?index=${encodeURIComponent(indexName)}`);
+  const res=await fetch(url,{headers:{Accept:'application/json'}});
+  if(!res.ok)throw new Error('Proxy returned '+res.status);
+  const txt=await res.text();let json;
+  try{json=JSON.parse(txt);}catch(e){throw new Error('Invalid JSON');}
+  const raw=json&&Array.isArray(json.data)?json.data:Array.isArray(json)?json:[];
+  return raw.map(normalizeRow).filter(x=>x.symbol);
+}
+
+function drawPanelTreemap(panelId,items){
+  const viz=document.getElementById('viz-'+panelId);
+  viz.innerHTML='';
+  const rect=viz.getBoundingClientRect();
+  const width=rect.width,height=rect.height;
+  if(width<=0||height<=0)return;
+  const svg=d3.select(viz).append('svg').attr('width',width).attr('height',height);
+  if(!items||!items.length){svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle').attr('fill','#999').text('No data');return;}
+  const positives=items.filter(d=>d.percentChange>0).sort((a,b)=>b.percentChange-a.percentChange);
+  const negatives=items.filter(d=>d.percentChange<=0).sort((a,b)=>Math.abs(b.percentChange)-Math.abs(a.percentChange));
+  const leftBox={x:0,y:0,width:width/2,height:height};
+  const rightBox={x:width/2,y:0,width:width/2,height:height};
+
+  function layoutGroup(g,box){
+    const root=d3.hierarchy({children:g.map(it=>({name:it.symbol,value:Math.max(0.0001,Math.abs(it.percentChange)),pct:it.percentChange,ltp:it.ltp}))}).sum(d=>d.value);
+    d3.treemap().size([box.width,box.height]).paddingInner(0)(root);
+    return root.leaves().map(l=>({x0:l.x0+box.x,x1:l.x1+box.x,y0:l.y0+box.y,y1:l.y1+box.y,data:l.data}));
+  }
+
+  const posNodes=layoutGroup(positives,leftBox);
+  let negNodes=layoutGroup(negatives,rightBox).map(n=>({...n,x0:rightBox.x+rightBox.width-(n.x1-rightBox.x),x1:rightBox.x+rightBox.width-(n.x0-rightBox.x)}));
+  const nodes=posNodes.concat(negNodes);
+  const maxAbs=d3.max(nodes,d=>Math.abs(d.data.pct))||1;
+  const tooltip=document.getElementById('tooltip');
+
+  const g=svg.selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x0},${d.y0})`);
+
+  g.append('foreignObject').attr('width',d=>d.x1-d.x0).attr('height',d=>d.y1-d.y0)
+  .append('xhtml:div')
+  .attr('class','tile-text')
+  .style('background',d=>d.data.pct>0?`rgba(0,200,83,${0.3+0.7*Math.abs(d.data.pct/maxAbs)})`:d.data.pct<0?`rgba(255,59,48,${0.3+0.7*Math.abs(d.data.pct/maxAbs)})`:`rgba(150,150,150,0.3)`)
+  .html(d=>`
+    <div class="tile-name" style="font-size:calc(${Math.min((d.x1-d.x0),(d.y1-d.y0))/7}px);">${d.data.name}</div>
+    <div class="tile-pct" style="font-size:calc(${Math.min((d.x1-d.x0),(d.y1-d.y0))/9}px);color:${d.data.pct>0?'#00ff99':'#ff8b8b'}">${(d.data.pct>0?'+':'')+d.data.pct.toFixed(2)}%</div>
+  `)
+  .on('mouseenter',(e,d)=>{
+    const el=e.currentTarget;
+    const glowColor=d.data.pct>0?'rgba(0,255,128,0.7)':d.data.pct<0?'rgba(255,90,90,0.8)':'rgba(180,180,180,0.5)';
+    el.style.boxShadow=`0 0 12px 2px ${glowColor}`;
+    el.style.border=`1px solid ${glowColor}`;
+    tooltip.innerHTML=`<b>${d.data.name}</b><br><span style="color:${d.data.pct>0?'#00ff99':'#ff8b8b'}">${(d.data.pct>0?'+':'')+d.data.pct.toFixed(2)}%</span>`;
+    tooltip.classList.add('visible');
+  })
+  .on('mousemove',(e)=>{
+    const tooltipWidth=tooltip.offsetWidth;
+    const tooltipHeight=tooltip.offsetHeight;
+    let left=e.pageX+15;
+    let top=e.pageY+15;
+
+    if(left+tooltipWidth>window.innerWidth-10) left=e.pageX-tooltipWidth-15;
+    if(top+tooltipHeight>window.innerHeight-10) top=e.pageY-tooltipHeight-15;
+
+    tooltip.style.left=left+'px';
+    tooltip.style.top=top+'px';
+  })
+  .on('mouseleave',(e)=>{
+    const el=e.currentTarget;
+    el.style.boxShadow='none';
+    el.style.border='1px solid transparent';
+    tooltip.classList.remove('visible');
+  })
+  .on('click',(e,d)=>{
+    e.stopPropagation();
+    const tvUrl=`https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(d.data.name)}&interval=5`;
+    window.open(tvUrl,'_blank');
+  });
+}
+
+async function refreshAll(){
+  const entries=Object.entries(INDEXES);
+  const results=await Promise.all(entries.map(([id,name])=>fetchMembers(name).then(arr=>({id,arr}))));
+  const niftyRes=results.find(r=>r.id==='nifty50');
+  if(niftyRes){
+    const arr=niftyRes.arr;
+    const sorted=[...arr].sort((a,b)=>b.percentChange-a.percentChange);
+    niftyRes.filtered=sorted.filter(a=>a.percentChange>0).slice(0,13).concat(sorted.filter(a=>a.percentChange<=0).slice(-13));
+  }
+  results.forEach(r=>drawPanelTreemap(r.id,r.filtered||r.arr));
+}
+
+/* ---- Sector Chart ---- */
+const NSE_ALL='https://www.nseindia.com/api/allIndices';
+const sectors=["NIFTY BANK","NIFTY ENERGY","NIFTY FMCG","NIFTY IT","NIFTY FINSERV","NIFTY METAL","NIFTY PHARMA","NIFTY AUTO","NIFTY PSU BANK","NIFTY MEDIA","NIFTY REALTY"];
+let sectorChart=null;
+const sectorCanvas=document.getElementById('sectorChart');
+const sectorCtx=sectorCanvas.getContext('2d');
+const lastUpdated=document.getElementById('lastUpdated');
+const errorBox=document.getElementById('errorBox');
+document.getElementById('refreshBtn').addEventListener('click',fetchSectorData);
+
+async function fetchSectorData(){
+  try{
+    const res=await fetch(PROXY_URL+encodeURIComponent(NSE_ALL));
+    if(!res.ok) throw new Error('Proxy returned '+res.status);
+    const json=await res.json();
+    const list=json.data||[];
+    const vals=[],cols=[];
+    sectors.forEach(sec=>{
+      const f=list.find(x=>((x.index||x.name||'')+'').trim().toUpperCase()===sec);
+      const c=f?parseFloat(f.percentChange)||0:0;
+      vals.push(c);
+      cols.push(c>0?'rgba(0,200,83,0.85)':c<0?'rgba(255,59,48,0.85)':'rgba(180,180,180,0.3)');
+    });
+    const chartData={labels:sectors,datasets:[{data:vals,backgroundColor:cols,borderRadius:4,barThickness:14}]};
+    const opts={indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{color:'#fff',anchor:'end',align:'right',formatter:v=>(v>0?'+':'')+v.toFixed(2)+'%',font:{size:10,weight:'600'}}},scales:{x:{ticks:{color:'#aaa',callback:v=>v+'%'}},y:{ticks:{color:'#fff',font:{size:10,weight:'600'}}}}};
+    if(sectorChart){sectorChart.data=chartData;sectorChart.update();}
+    else{sectorChart=new Chart(sectorCtx,{type:'bar',data:chartData,options:opts,plugins:[ChartDataLabels]});}
+    lastUpdated.textContent='Last updated: '+new Date().toLocaleTimeString();
+  }catch(e){errorBox.style.display='block';errorBox.textContent='Failed: '+e.message;}
+}
+
+document.getElementById('refreshAllBtn').addEventListener('click',()=>{refreshAll();fetchSectorData();});
+window.addEventListener('resize',()=>refreshAll());
+refreshAll();fetchSectorData();setInterval(()=>{refreshAll();fetchSectorData();},REFRESH_MS);
+</script>
+</body>
+</html>
