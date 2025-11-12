@@ -252,6 +252,85 @@
   }
 }
 
+/* Dropdown Container */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* Button Look */
+.dropbtn {
+  background: transparent;
+  border: none;
+  color: #c5c6c7;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.dropbtn:hover {
+  background: #1a1e22;
+  color: #66fcf1;
+}
+
+/* Dropdown Menu Panel start */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #121417;
+  min-width: 600px;
+  padding: 16px 20px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+  border: 1px solid #1f2833;
+  border-radius: 10px;
+  z-index: 999;
+  display: flex;
+  gap: 40px;
+}
+
+/* Column Style */
+.dropdown-content .col {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+.dropdown-content h4 {
+  color: #66fcf1;
+  margin-bottom: 8px;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 4px;
+}
+.dropdown-content a {
+  color: #c5c6c7;
+  padding: 4px 0;
+  font-size: 13px;
+  text-decoration: none;
+}
+.dropdown-content a:hover {
+  color: #66fcf1;
+}
+
+/* Show on Hover */
+.dropdown:hover .dropdown-content {
+  display: flex;
+}
+
+.dropdown-content {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.25s ease;
+}
+.dropdown:hover .dropdown-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+/* Dropdown Menu Panel end */
+
 </style>
 </head>
 <body>
@@ -263,6 +342,34 @@
       <button id="btnIndex">Index</button>
       <button id="btnScreener">Screener</button>
       <button id="btnOIClock" class="active">OI Clock</button>
+    
+      <div class="dropdown">
+        <button class="dropbtn">Market Data ▼</button>
+        <div class="dropdown-content">
+          <div class="col">
+            <h4>Equity</h4>
+            <a href="heatmap-bargraph.html">sector heatmap</a>
+            <a href="#">Market1</a>
+            <a href="#">market2</a>
+            <a href="#">Swing Picks</a>
+          </div>
+          <div class="col">
+            <h4>Derivatives</h4>
+            <a href="#">Oi</a>
+            <a href="#">oi</a>
+            <a href="#">OI </a>
+            <a href="#">oi</a>
+          </div>
+          <div class="col">
+            <h4>test</h4>
+            <a href="#">test</a>
+            <a href="#">test Trades</a>
+            <a href="#">test </a>
+          </div>
+        </div>
+      </div>
+
+
 
       
     </div>
