@@ -263,6 +263,8 @@
       <button id="btnIndex">Index</button>
       <button id="btnScreener">Screener</button>
       <button id="btnOIClock" class="active">OI Clock</button>
+
+      
     </div>
   </div>
   <div class="nav-right">
@@ -271,16 +273,130 @@
 </nav>
 
 <div class="container">
-  <!-- DASHBOARD (empty placeholder) -->
-  <section id="dashboardSection" style="display:none;">
-    <div class="panel">
-      <h2>Dashboard (placeholder)</h2>
-      <div class="header-line">
-        <div class="meta">Empty — add Market Sentiment Dashboard here later.</div>
+
+    <!-- DASHBOARD (Sector Performance Chart Integrated) -->
+    <section id="dashboardSection" style="display:none;">
+      <div class="panel" style="text-align:center;">
+        <h2>Sector Performance — Market Overview</h2>
+        <p class="meta">Live NSE Sector % Change (Auto-refresh every 30s)</p>
+  
+        <div style="height:700px;margin-top:10px;">
+          <canvas id="sectorChart"></canvas>
+        </div>
+  
+        <div class="meta" style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="lastUpdated">Last updated: --</span>
+          <button id="refreshSectorBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#ccc;border-radius:8px;padding:5px 10px;cursor:pointer;">Refresh</button>
+        </div>
+  
+        <div id="errorBox" class="error"></div>
       </div>
-      <div style="padding:12px;color:#9fe7e2">Dashboard area is intentionally left empty as requested.</div>
-    </div>
-  </section>
+  
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+      <script>
+        const PROXY_URL = "https://nse-proxy-akon.kameshravirks.workers.dev/?url=";
+        const NSE_URL = "https://www.nseindia.com/api/allIndices";
+  
+        const sectors = [
+          "NIFTY BANK","NIFTY ENERGY","NIFTY FMCG","NIFTY IT",
+          "NIFTY FINSERV","NIFTY METAL","NIFTY PHARMA","NIFTY AUTO",
+          "NIFTY PSU BANK","NIFTY MEDIA","NIFTY REALTY"
+        ];
+  
+        let sectorChart;
+        const ctx = document.getElementById("sectorChart").getContext("2d");
+        const refreshSectorBtn = document.getElementById("refreshSectorBtn");
+        const lastUpdated = document.getElementById("lastUpdated");
+        const errorBox = document.getElementById("errorBox");
+  
+        refreshSectorBtn.addEventListener("click", fetchSectorData);
+  
+        async function fetchSectorData() {
+          errorBox.style.display = "none";
+          try {
+            const res = await fetch(PROXY_URL + encodeURIComponent(NSE_URL), {
+              headers: { "Accept": "application/json" }
+            });
+            if (!res.ok) throw new Error(res.statusText);
+            const json = await res.json();
+            const list = json.data || [];
+  
+            const values = [], colors = [];
+            sectors.forEach(sec => {
+              const f = list.find(x => (x.index || "").toUpperCase() === sec);
+              const change = f ? parseFloat(f.percentChange) || 0 : 0;
+              values.push(change);
+              colors.push(change > 0
+                ? "rgba(0,200,83,0.85)"
+                : change < 0
+                ? "rgba(255,59,48,0.85)"
+                : "rgba(200,200,200,0.2)"
+              );
+            });
+  
+            const data = {
+              labels: sectors,
+              datasets: [{
+                label: "% Change",
+                data: values,
+                backgroundColor: colors,
+                borderRadius: 8,
+                barThickness: 18
+              }]
+            };
+  
+            const options = {
+              indexAxis: "y",
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                datalabels: {
+                  color: "#fff",
+                  anchor: "end",
+                  align: "right",
+                  formatter: v => (v > 0 ? "+" : "") + v.toFixed(2) + "%",
+                  font: { weight: "600", size: 12 }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: c => (c.raw > 0 ? "+" : "") + c.raw.toFixed(2) + "%"
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  ticks: { color: "#aaa", callback: v => v + "%" },
+                  grid: { color: "rgba(255,255,255,0.05)" }
+                },
+                y: {
+                  ticks: { color: "#ddd", font: { size: 13, weight: 600 } },
+                  grid: { display: false }
+                }
+              }
+            };
+  
+            if (sectorChart) {
+              sectorChart.data = data;
+              sectorChart.update();
+            } else {
+              sectorChart = new Chart(ctx, { type: "bar", data, options, plugins: [ChartDataLabels] });
+            }
+  
+            lastUpdated.textContent = "Last updated: " + new Date().toLocaleTimeString();
+          } catch (e) {
+            errorBox.style.display = "block";
+            errorBox.textContent = "Failed to fetch data — " + e.message;
+            console.error(e);
+          }
+        }
+  
+        fetchSectorData();
+        setInterval(fetchSectorData, 30000);
+      </script>
+    </section>
+  
 
   <!-- INDEX (DYNAMIC HEATMAP) -->
   <section id="indexSection" style="display:none;">
