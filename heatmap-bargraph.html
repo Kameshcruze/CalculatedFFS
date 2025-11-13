@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>NIFTY Heatmaps — Screener UI (Smart Tooltip + Dynamic Glow)</title>
+<title>Merged — Heatmaps + Gauges + Sector (Final Layout)</title>
 
+<!-- libs -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,335 +15,531 @@
   :root {
     --bg: #0b0c10;
     --accent: #66fcf1;
+    --panel-border: rgba(255,255,255,0.05);
   }
-  * {
-    box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
-    margin: 0;
-    padding: 0;
-  }
-  html, body {
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-  }
-  body {
-    background: var(--bg);
-    color: #e6e7e8;
-    display: flex;
-    flex-direction: column;
-  }
+  *{box-sizing:border-box;font-family:'Poppins',sans-serif;margin:0;padding:0}
+  html,body{height:100%;width:100%;background:var(--bg);color:#e6e7e8;overflow:hidden}
+  
+  /* NAVBAR height confirmed 40px */
+  .titleRow { height:40px; display:flex; align-items:center; justify-content:space-between; padding:6px 18px; }
+  .title { font-weight:700; font-size:16px; color:#fff }
+  .refreshAllBtn { background:transparent; border:1px solid rgba(255,255,255,0.08); color:var(--accent); padding:6px 12px; cursor:pointer; font-weight:600; 
 
-  .page {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-  }
+}
 
-  .titleRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    flex: 0 0 auto;
-  }
-  .title {
-    font-weight: 700;
-    font-size: 18px;
-    color: #fff;
-  }
-  .refreshAllBtn {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--accent);
-    padding: 6px 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
 
+
+  /* Main grid area (space below navbar) */
+  .grid-wrap { height: calc(100vh - 40px); padding: 10px; }
   .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 10px;
-    flex: 1;
-    width: 100%;
-    height: calc(100vh - 60px);
-    padding: 10px;
-  }
-  @media (max-width: 1100px) {
-    html, body { overflow: auto; }
-    .grid {
-      grid-template-columns: 1fr;
-      grid-template-rows: auto auto auto auto;
-      height: auto;
-    }
+    width:100%;
+    height:100%;
+    display:grid;
+    grid-template-columns: 650px 710px 520px; /* 900 + 520 + 500 = 1920 */
+    grid-template-rows: 1fr 1fr; /* rows equally split; panels adapt inside */
+    gap:12px;
   }
 
   .panel {
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.03));
-    border: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
   }
+  .hdr { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.04); flex:0 0 auto }
+  .hdr h3 { margin:0; color:var(--accent); font-size:14px; }
 
-  .hdr {
-    padding: 8px 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-  }
-  .hdr h3 {
-    margin: 0;
-    color: var(--accent);
-    font-size: 14px;
-  }
-  .viz {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-  }
+  .viz { flex:1 1 auto; position:relative; overflow:hidden; }
 
   /* Tooltip */
-  #tooltip {
-    position: fixed;
-    pointer-events: none;
-    display: block;
-    opacity: 0;
-    transition: opacity 0.25s ease, transform 0.18s ease;
-    z-index: 1000;
-    min-width: 160px;
-    padding: 8px 10px;
-    background: rgba(10,10,10,0.95);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #fff;
-    font-size: 13px;
-    border-radius: 6px;
-    transform: translateY(-6px);
-  }
-  #tooltip.visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  #tooltip{position:fixed;pointer-events:none;opacity:0;transition:opacity .25s,transform .18s;z-index:1000;
+    min-width:160px;padding:8px 10px;background:rgba(10,10,10,0.95);border:1px solid rgba(255,255,255,0.1);
+    color:#fff;font-size:13px;border-radius:6px;transform:translateY(-6px)}
+  #tooltip.visible{opacity:1;transform:translateY(0)}
 
-  .tile-text {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    transition: all 0.25s ease;
-    border: 1px solid transparent;
+  .tile-text{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;width:100%;height:100%;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:all .25s}
+  .tile-name{font-weight:800;color:#fff;line-height:1}
+  .tile-pct{font-weight:700;margin-top:4px}
+
+  .sector-card{width:100%;height:100%;display:flex;flex-direction:column;padding:10px}
+  .sector-card .header h1{font-size:15px;margin:0;color:#fff}
+  .sector-meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#9b9b9b;padding-top:6px}
+
+  canvas{width:100% !important;height:100% !important;display:block}
+
+  /* Panel-specific helpers */
+  .gbox { display:flex; gap:10px; justify-content:center; align-items:center; height:100%; padding:8px; }
+  .gcol { flex:1 1 50%; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+
+  .lastUpdatedSmall { text-align:center; margin-top:6px; font-size:12px; color:#9aa0a6; }
+
+
+  /* responsive fallback for smaller widths */
+  @media (max-width:1200px){
+    html,body{overflow:auto}
+    .grid { grid-template-columns: 1fr; grid-template-rows: auto; height:auto }
+    .grid-wrap{padding:8px}
   }
-
-  .tile-name { font-weight: 800; color: #fff; line-height: 1; }
-  .tile-pct { font-weight: 700; margin-top: 4px; }
-
-  .sector-card { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 10px; }
-  .sector-card .header h1 { font-size: 15px; margin: 0; color: #fff; }
-  .sector-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9b9b9b; padding-top: 6px; }
-  canvas { width: 100%!important; height: 100%!important; display: block; }
 </style>
 </head>
 <body>
-  <div class="page">
-    <div class="titleRow">
-      <div class="title">Market Heatmaps</div>
-      <button class="refreshAllBtn" id="refreshAllBtn">⟳ Refresh All</button>
+
+  <!-- NAV -->
+<div class="titleRow">
+  <div style="display:flex; align-items:center; gap:14px;">
+    <div class="title">Market Heatmaps</div>
+
+    <!-- Go To Page Button -->
+    <button id="gotoPageBtn"
+      style="background:#030d10; border:none; padding:6px 14px; color:#fff;
+             border-radius:6px; cursor:pointer; font-weight:600;">
+      Screener
+    </button>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:16px;">
+
+    <!-- Clock -->
+    <div id="liveClock"
+      style="color:#a8afb5; font-size:14px; font-weight:600;">
+      --
     </div>
 
+    <button class="refreshAllBtn" id="refreshAllBtn">⟳ Refresh All</button>
+  </div>
+</div>
+
+
+  <!-- GRID area (below nav) -->
+  <div class="grid-wrap">
     <div class="grid">
-      <div class="panel" id="panel-nifty50">
+
+      <!-- BOX 1: NIFTY50 (left, spans both rows) -->
+      <div class="panel" id="panel-nifty50" style="grid-column:1; grid-row:1 / span 2;">
         <div class="hdr"><h3>NIFTY 50</h3></div>
         <div class="viz" id="viz-nifty50"></div>
       </div>
 
-      <div class="panel" id="panel-banknifty">
+      <!-- BOX 2: BANK NIFTY (top-middle) -->
+      <div class="panel" id="panel-banknifty" style="grid-column:2; grid-row:1;">
         <div class="hdr"><h3>NIFTY BANK</h3></div>
         <div class="viz" id="viz-banknifty"></div>
       </div>
 
-      <div class="panel" id="panel-finnifty">
+      <!-- BOX 4+5 combined (right column) - spans both rows; top 30% for gauges, bottom 70% for sector -->
+      <div class="panel" id="panel-column3" style="grid-column:3; grid-row:1 / span 2; display:flex; flex-direction:column;">
+        <div class="hdr"><h3>Market Sentiment</h3></div>
+
+        <!-- top 30%: Gauges -->
+        <div id="rightTop" style="flex:0 0 30%; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; align-items:center; justify-content:center; padding:6px;">
+          <div class="gbox" style="width:100%;max-width:420px;">
+            <div class="gcol">
+              <div style="font-weight:700;color:#dfe3e6;margin-bottom:6px;font-size:12px;">NIFTY</div>
+              <canvas id="niftyCanvas" width="220" height="120" style="width:220px;height:120px"></canvas>
+            </div>
+            <div class="gcol">
+              <div style="font-weight:700;color:#dfe3e6;margin-bottom:6px;font-size:12px;">BANKNIFTY</div>
+              <canvas id="bankCanvas" width="220" height="120" style="width:220px;height:120px"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- bottom 70%: Sector performance (bigger) -->
+        <div id="rightBottom" style="flex:1 1 70%; display:flex; flex-direction:column; padding:8px;">
+          <div style="flex:0 0 auto; font-weight:600; color:var(--accent); margin-bottom:6px;">Sector Performance</div>
+          <div id="sectorCanvasWrap" style="flex:1 1 auto; min-height:0;">
+            <canvas id="sectorChart"></canvas>
+          </div>
+          <div style="flex:0 0 auto; display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <span id="lastUpdated">Last updated: --</span>
+            <button id="refreshBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#ccc;border-radius:8px;padding:6px 10px;cursor:pointer;">Refresh</button>
+          </div>
+          <div id="errorBox" style="color:#ff6b6b;font-size:12px;display:none;"></div>
+        </div>
+      </div>
+
+      <!-- BOX 3: FINNIFTY (bottom-middle) -->
+      <div class="panel" id="panel-finnifty" style="grid-column:2; grid-row:2;">
         <div class="hdr"><h3>NIFTY FIN SERVICE</h3></div>
         <div class="viz" id="viz-finnifty"></div>
       </div>
 
-      <div class="panel" id="panel-sectors">
-        <div class="hdr"><h3>Sector Performance</h3></div>
-        <div class="viz" id="sectorPanel">
-          <div class="sector-card" id="sectorCard">
-            <div class="header"><h1>Market Overview</h1></div>
-            <div id="sectorCanvasWrap" style="flex:1;min-height:0;">
-              <canvas id="sectorChart"></canvas>
-            </div>
-            <div class="sector-meta">
-              <span id="lastUpdated">Last updated: --</span>
-              <button id="refreshBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#ccc;border-radius:8px;padding:4px 8px;cursor:pointer;">Refresh</button>
-            </div>
-            <div id="errorBox" style="color:#ff6b6b;font-size:12px;display:none;"></div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
   <div id="tooltip"></div>
 
 <script>
+/* ============================
+   Shared config & helpers
+   ============================ */
 const PROXY_URL = 'https://nse-proxy-akon.kameshravirks.workers.dev/?url=';
-const REFRESH_MS = 30000;
+const REFRESH_MS = 10000; // 10s
 const INDEXES = { nifty50: 'NIFTY 50', banknifty: 'NIFTY BANK', finnifty: 'NIFTY FIN SERVICE' };
+const NSE_ALL = 'https://www.nseindia.com/api/allIndices';
 
 function proxyUrl(target){ return PROXY_URL + encodeURIComponent(target); }
-function num(x){ const v=parseFloat(x); return isNaN(v)?NaN:v; }
-
+function num(x){ const v = parseFloat(x); return isNaN(v)?NaN:v; }
 function normalizeRow(it){
   const symbol=(it.symbol||it.tradingsymbol||it.metadata?.symbol||it.SYMBOL||'').toString().trim();
   const ltp=num(it.lastPrice??it.ltp??it.LTP);
   let pct=num(it.percentChange??it.pChange??it['%change']);
-  if(isNaN(pct)&&!isNaN(ltp)&&(it.previousClose||it.prevClose||it.previous)){
+  if(isNaN(pct) && !isNaN(ltp) && (it.previousClose||it.prevClose||it.previous)){
     const prev=num(it.previousClose??it.prevClose??it.previous);
-    if(!isNaN(prev)&&prev!==0)pct=((ltp-prev)/prev)*100;
+    if(!isNaN(prev) && prev!==0) pct = ((ltp - prev)/prev) * 100;
   }
-  return{symbol,ltp:isNaN(ltp)?null:ltp,percentChange:pct||0};
+  return { symbol, ltp: isNaN(ltp) ? null : ltp, percentChange: pct || 0 };
 }
 
+/* ============================
+   TREEMAP drawing (unchanged)
+   ============================ */
 async function fetchMembers(indexName){
-  const url=proxyUrl(`https://www.nseindia.com/api/equity-stockIndices?index=${encodeURIComponent(indexName)}`);
-  const res=await fetch(url,{headers:{Accept:'application/json'}});
-  if(!res.ok)throw new Error('Proxy returned '+res.status);
-  const txt=await res.text();let json;
-  try{json=JSON.parse(txt);}catch(e){throw new Error('Invalid JSON');}
-  const raw=json&&Array.isArray(json.data)?json.data:Array.isArray(json)?json:[];
-  return raw.map(normalizeRow).filter(x=>x.symbol);
+  const url = proxyUrl(`https://www.nseindia.com/api/equity-stockIndices?index=${encodeURIComponent(indexName)}`);
+  const res = await fetch(url, { headers: { Accept: 'application/json' }});
+  if(!res.ok) throw new Error('Proxy returned ' + res.status);
+  const txt = await res.text(); let json;
+  try{ json = JSON.parse(txt); } catch(e){ throw new Error('Invalid JSON'); }
+  const raw = json && Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : [];
+  return raw.map(normalizeRow).filter(x => x.symbol);
 }
 
-function drawPanelTreemap(panelId,items){
-  const viz=document.getElementById('viz-'+panelId);
-  viz.innerHTML='';
-  const rect=viz.getBoundingClientRect();
-  const width=rect.width,height=rect.height;
-  if(width<=0||height<=0)return;
-  const svg=d3.select(viz).append('svg').attr('width',width).attr('height',height);
-  if(!items||!items.length){svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle').attr('fill','#999').text('No data');return;}
-  const positives=items.filter(d=>d.percentChange>0).sort((a,b)=>b.percentChange-a.percentChange);
-  const negatives=items.filter(d=>d.percentChange<=0).sort((a,b)=>Math.abs(b.percentChange)-Math.abs(a.percentChange));
-  const leftBox={x:0,y:0,width:width/2,height:height};
-  const rightBox={x:width/2,y:0,width:width/2,height:height};
+function drawPanelTreemap(panelKey, items){
+  const vizId = 'viz-' + panelKey;
+  const viz = document.getElementById(vizId);
+  viz.innerHTML = '';
+  const rect = viz.getBoundingClientRect();
+  const width = rect.width, height = rect.height;
+  if(width <= 0 || height <= 0) return;
+  const svg = d3.select(viz).append('svg').attr('width', width).attr('height', height);
+  if(!items || !items.length){
+    svg.append('text').attr('x', width/2).attr('y', height/2).attr('text-anchor','middle').attr('fill','#999').text('No data');
+    return;
+  }
+  const positives = items.filter(d => d.percentChange > 0).sort((a,b) => b.percentChange - a.percentChange);
+  const negatives = items.filter(d => d.percentChange <= 0).sort((a,b) => Math.abs(b.percentChange)-Math.abs(a.percentChange));
+  const leftBox = { x:0, y:0, width: width/2, height: height };
+  const rightBox = { x: width/2, y:0, width: width/2, height: height };
 
-  function layoutGroup(g,box){
-    const root=d3.hierarchy({children:g.map(it=>({name:it.symbol,value:Math.max(0.0001,Math.abs(it.percentChange)),pct:it.percentChange,ltp:it.ltp}))}).sum(d=>d.value);
-    d3.treemap().size([box.width,box.height]).paddingInner(0)(root);
-    return root.leaves().map(l=>({x0:l.x0+box.x,x1:l.x1+box.x,y0:l.y0+box.y,y1:l.y1+box.y,data:l.data}));
+  function layoutGroup(g, box){
+    const root = d3.hierarchy({ children: g.map(it => ({ name: it.symbol, value: Math.max(0.0001, Math.abs(it.percentChange)), pct: it.percentChange, ltp: it.ltp }))}).sum(d => d.value);
+    d3.treemap().size([box.width, box.height]).paddingInner(0)(root);
+    return root.leaves().map(l => ({ x0: l.x0 + box.x, x1: l.x1 + box.x, y0: l.y0 + box.y, y1: l.y1 + box.y, data: l.data }));
   }
 
-  const posNodes=layoutGroup(positives,leftBox);
-  let negNodes=layoutGroup(negatives,rightBox).map(n=>({...n,x0:rightBox.x+rightBox.width-(n.x1-rightBox.x),x1:rightBox.x+rightBox.width-(n.x0-rightBox.x)}));
-  const nodes=posNodes.concat(negNodes);
-  const maxAbs=d3.max(nodes,d=>Math.abs(d.data.pct))||1;
-  const tooltip=document.getElementById('tooltip');
+  const posNodes = layoutGroup(positives, leftBox);
+  let negNodes = layoutGroup(negatives, rightBox).map(n => ({ ...n, x0: rightBox.x + rightBox.width - (n.x1 - rightBox.x), x1: rightBox.x + rightBox.width - (n.x0 - rightBox.x) }));
+  const nodes = posNodes.concat(negNodes);
+  const maxAbs = d3.max(nodes, d => Math.abs(d.data.pct)) || 1;
+  const tooltip = document.getElementById('tooltip');
 
-  const g=svg.selectAll('g').data(nodes).join('g').attr('transform',d=>`translate(${d.x0},${d.y0})`);
+  const g = svg.selectAll('g').data(nodes).join('g').attr('transform', d => `translate(${d.x0},${d.y0})`);
 
-  g.append('foreignObject').attr('width',d=>d.x1-d.x0).attr('height',d=>d.y1-d.y0)
-  .append('xhtml:div')
-  .attr('class','tile-text')
-  .style('background',d=>d.data.pct>0?`rgba(0,200,83,${0.3+0.7*Math.abs(d.data.pct/maxAbs)})`:d.data.pct<0?`rgba(255,59,48,${0.3+0.7*Math.abs(d.data.pct/maxAbs)})`:`rgba(150,150,150,0.3)`)
-  .html(d=>`
-    <div class="tile-name" style="font-size:calc(${Math.min((d.x1-d.x0),(d.y1-d.y0))/7}px);">${d.data.name}</div>
-    <div class="tile-pct" style="font-size:calc(${Math.min((d.x1-d.x0),(d.y1-d.y0))/9}px);color:${d.data.pct>0?'#00ff99':'#ff8b8b'}">${(d.data.pct>0?'+':'')+d.data.pct.toFixed(2)}%</div>
-  `)
-  .on('mouseenter',(e,d)=>{
-    const el=e.currentTarget;
-    const glowColor=d.data.pct>0?'rgba(0,255,128,0.7)':d.data.pct<0?'rgba(255,90,90,0.8)':'rgba(180,180,180,0.5)';
-    el.style.boxShadow=`0 0 12px 2px ${glowColor}`;
-    el.style.border=`1px solid ${glowColor}`;
-    tooltip.innerHTML=`<b>${d.data.name}</b><br><span style="color:${d.data.pct>0?'#00ff99':'#ff8b8b'}">${(d.data.pct>0?'+':'')+d.data.pct.toFixed(2)}%</span>`;
-    tooltip.classList.add('visible');
-  })
-  .on('mousemove',(e)=>{
-    const tooltipWidth=tooltip.offsetWidth;
-    const tooltipHeight=tooltip.offsetHeight;
-    let left=e.pageX+15;
-    let top=e.pageY+15;
-
-    if(left+tooltipWidth>window.innerWidth-10) left=e.pageX-tooltipWidth-15;
-    if(top+tooltipHeight>window.innerHeight-10) top=e.pageY-tooltipHeight-15;
-
-    tooltip.style.left=left+'px';
-    tooltip.style.top=top+'px';
-  })
-  .on('mouseleave',(e)=>{
-    const el=e.currentTarget;
-    el.style.boxShadow='none';
-    el.style.border='1px solid transparent';
-    tooltip.classList.remove('visible');
-  })
-  .on('click',(e,d)=>{
-    e.stopPropagation();
-    const tvUrl=`https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(d.data.name)}&interval=5`;
-    window.open(tvUrl,'_blank');
-  });
+  g.append('foreignObject').attr('width', d => d.x1 - d.x0).attr('height', d => d.y1 - d.y0)
+    .append('xhtml:div')
+    .attr('class','tile-text')
+    .style('background', d => d.data.pct > 0 ? `rgba(0,200,83,${0.3 + 0.7*Math.abs(d.data.pct/maxAbs)})` : d.data.pct < 0 ? `rgba(255,59,48,${0.3 + 0.7*Math.abs(d.data.pct/maxAbs)})` : `rgba(150,150,150,0.3)`)
+    .html(d => `<div class="tile-name" style="font-size:calc(${Math.min((d.x1-d.x0),(d.y1-d.y0))/7}px);">${d.data.name}</div>
+                <div class="tile-pct" style="font-size:calc(${Math.min((d.x1-d.x0),(d.y1-d.y0))/9}px);color:${d.data.pct>0?'#00ff99':'#ff8b8b'}">${(d.data.pct>0?'+':'')+d.data.pct.toFixed(2)}%</div>`)
+    .on('mouseenter', (e,d) => {
+      const el = e.currentTarget;
+      const glowColor = d.data.pct > 0 ? 'rgba(0,255,128,0.7)' : d.data.pct < 0 ? 'rgba(255,90,90,0.8)' : 'rgba(180,180,180,0.5)';
+      el.style.boxShadow = `0 0 12px 2px ${glowColor}`;
+      el.style.border = `1px solid ${glowColor}`;
+      tooltip.innerHTML = `<b>${d.data.name}</b><br><span style="color:${d.data.pct>0?'#00ff99':'#ff8b8b'}">${(d.data.pct>0?'+':'')+d.data.pct.toFixed(2)}%</span>`;
+      tooltip.classList.add('visible');
+    })
+    .on('mousemove', (e) => {
+      const tooltipWidth = tooltip.offsetWidth, tooltipHeight = tooltip.offsetHeight;
+      let left = e.pageX + 15, top = e.pageY + 15;
+      if(left + tooltipWidth > window.innerWidth - 10) left = e.pageX - tooltipWidth - 15;
+      if(top + tooltipHeight > window.innerHeight - 10) top = e.pageY - tooltipHeight - 15;
+      tooltip.style.left = left + 'px'; tooltip.style.top = top + 'px';
+    })
+    .on('mouseleave', (e) => {
+      const el = e.currentTarget; el.style.boxShadow = 'none'; el.style.border = '1px solid transparent'; tooltip.classList.remove('visible');
+    })
+    .on('click', (e,d) => {
+      e.stopPropagation();
+      const tvUrl = `https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(d.data.name)}&interval=5`;
+      window.open(tvUrl, '_blank');
+    });
 }
 
+/* fetch & refresh logic for treemaps */
 async function refreshAll(){
-  const entries=Object.entries(INDEXES);
-  const results=await Promise.all(entries.map(([id,name])=>fetchMembers(name).then(arr=>({id,arr}))));
-  const niftyRes=results.find(r=>r.id==='nifty50');
-  if(niftyRes){
-    const arr=niftyRes.arr;
-    const sorted=[...arr].sort((a,b)=>b.percentChange-a.percentChange);
-    niftyRes.filtered=sorted.filter(a=>a.percentChange>0).slice(0,13).concat(sorted.filter(a=>a.percentChange<=0).slice(-13));
-  }
-  results.forEach(r=>drawPanelTreemap(r.id,r.filtered||r.arr));
+  try {
+    const entries = Object.entries(INDEXES);
+    const results = await Promise.all(entries.map(([id, name]) =>
+      fetchMembers(name).then(arr => ({ id, arr })).catch(err => ({ id, arr: [], err }))
+    ));
+
+    const niftyRes = results.find(r => r.id === 'nifty50');
+    if (niftyRes && niftyRes.arr.length) {
+      const arr = niftyRes.arr;
+      const sorted = [...arr].sort((a,b)=>b.percentChange-a.percentChange);
+      niftyRes.filtered = sorted.filter(a=>a.percentChange>0).slice(0,13).concat(sorted.filter(a=>a.percentChange<=0).slice(-13));
+    }
+
+    results.forEach(r => drawPanelTreemap(r.id, r.filtered || r.arr || []));
+  } catch (e) { console.error('refreshAll', e); }
 }
 
-/* ---- Sector Chart ---- */
-const NSE_ALL='https://www.nseindia.com/api/allIndices';
-const sectors=["NIFTY BANK","NIFTY ENERGY","NIFTY FMCG","NIFTY IT","NIFTY FINSERV","NIFTY METAL","NIFTY PHARMA","NIFTY AUTO","NIFTY PSU BANK","NIFTY MEDIA","NIFTY REALTY"];
-let sectorChart=null;
-const sectorCanvas=document.getElementById('sectorChart');
-const sectorCtx=sectorCanvas.getContext('2d');
-const lastUpdated=document.getElementById('lastUpdated');
-const errorBox=document.getElementById('errorBox');
-document.getElementById('refreshBtn').addEventListener('click',fetchSectorData);
+/* ============================
+   SECTOR CHART
+   ============================ */
+const sectors = ["NIFTY BANK","NIFTY ENERGY","NIFTY FMCG","NIFTY IT","NIFTY FINSERV","NIFTY METAL","NIFTY PHARMA","NIFTY AUTO","NIFTY PSU BANK","NIFTY MEDIA","NIFTY REALTY"];
+let sectorChart = null;
+const sectorCanvas = document.getElementById('sectorChart');
+const sectorCtx = sectorCanvas.getContext('2d');
+const lastUpdatedElem = document.getElementById('lastUpdated');
+const errorBox = document.getElementById('errorBox');
+document.getElementById('refreshBtn').addEventListener('click', fetchSectorData);
 
 async function fetchSectorData(){
   try{
-    const res=await fetch(PROXY_URL+encodeURIComponent(NSE_ALL));
-    if(!res.ok) throw new Error('Proxy returned '+res.status);
-    const json=await res.json();
-    const list=json.data||[];
-    const vals=[],cols=[];
+    // size canvas to wrap
+    const wrap = document.getElementById('sectorCanvasWrap');
+    const r = wrap.getBoundingClientRect();
+    sectorCanvas.width = Math.max(320, Math.floor(r.width));
+    sectorCanvas.height = Math.max(240, Math.floor(r.height));
+
+    const res = await fetch(PROXY_URL + encodeURIComponent(NSE_ALL), { cache:'no-store' });
+    if(!res.ok) throw new Error('Proxy returned ' + res.status);
+    const json = await res.json();
+    const list = json.data || [];
+    const vals = [], cols = [];
     sectors.forEach(sec=>{
-      const f=list.find(x=>((x.index||x.name||'')+'').trim().toUpperCase()===sec);
-      const c=f?parseFloat(f.percentChange)||0:0;
+      const f = list.find(x => ( (x.index || x.name || '') + '' ).trim().toUpperCase() === sec);
+      const c = f ? parseFloat(f.percentChange) || 0 : 0;
       vals.push(c);
-      cols.push(c>0?'rgba(0,200,83,0.85)':c<0?'rgba(255,59,48,0.85)':'rgba(180,180,180,0.3)');
+      cols.push(c>0 ? 'rgba(0,200,83,0.85)' : c<0 ? 'rgba(255,59,48,0.85)' : 'rgba(180,180,180,0.3)');
     });
-    const chartData={labels:sectors,datasets:[{data:vals,backgroundColor:cols,borderRadius:4,barThickness:14}]};
-    const opts={indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{color:'#fff',anchor:'end',align:'right',formatter:v=>(v>0?'+':'')+v.toFixed(2)+'%',font:{size:10,weight:'600'}}},scales:{x:{ticks:{color:'#aaa',callback:v=>v+'%'}},y:{ticks:{color:'#fff',font:{size:10,weight:'600'}}}}};
-    if(sectorChart){sectorChart.data=chartData;sectorChart.update();}
-    else{sectorChart=new Chart(sectorCtx,{type:'bar',data:chartData,options:opts,plugins:[ChartDataLabels]});}
-    lastUpdated.textContent='Last updated: '+new Date().toLocaleTimeString();
-  }catch(e){errorBox.style.display='block';errorBox.textContent='Failed: '+e.message;}
+
+    const chartData = { labels: sectors, datasets: [{ data: vals, backgroundColor: cols, borderRadius:4, barThickness: 12 }] };
+    const opts = {
+      indexAxis:'y', responsive:false, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, datalabels:{ color:'#fff', anchor:'end', align:'right', formatter:v => (v>0?'+':'')+v.toFixed(2)+'%', font:{ size:10, weight:'600' } } },
+      scales: {
+  x: {
+    min: -0.7,       // ensures bar stays inside chart
+    max: 0.7,        // same reason
+    ticks: {
+      stepSize: 0.35,   // produces: -0.70, -0.35, 0, 0.35, 0.70
+      color: '#aaa',
+      callback: function(value) {
+        return (value * 100).toFixed(2) + "%";  // converts 0.23 → 23%
+      }
+    }
+  },
+  y: {
+    ticks: {
+      color: '#fff',
+      font: { size: 10, weight: '600' }
+    }
+  }
+}};
+
+    if(sectorChart){ sectorChart.destroy(); sectorChart = null; }
+    sectorChart = new Chart(sectorCtx, { type:'bar', data: chartData, options: opts, plugins: [ ChartDataLabels ] });
+    lastUpdatedElem.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    errorBox.style.display = 'none';
+  }catch(e){
+    console.error(e);
+    errorBox.style.display = 'block';
+    errorBox.textContent = 'Failed: ' + e.message;
+  }
 }
 
-document.getElementById('refreshAllBtn').addEventListener('click',()=>{refreshAll();fetchSectorData();});
-window.addEventListener('resize',()=>refreshAll());
-refreshAll();fetchSectorData();setInterval(()=>{refreshAll();fetchSectorData();},REFRESH_MS);
+/* ============================
+   GAUGE (small) - top 30% of right column
+   ============================ */
+function drawStaticArc_small(ctx, W, H){
+  const cx = W/2;
+  const cy = H * 1.05;
+  const radius = Math.min(W*0.42, H*0.9);
+  ctx.clearRect(0,0,W,H);
+
+  ctx.beginPath();
+  ctx.lineWidth = Math.max(6, radius*0.14);
+  ctx.strokeStyle = "rgba(255,255,255,0.03)";
+  ctx.arc(cx, cy, radius, Math.PI, 2*Math.PI);
+  ctx.stroke();
+
+  const g = ctx.createLinearGradient(cx-radius, cy, cx+radius, cy);
+  g.addColorStop(0.00, "#ff3b30");
+  g.addColorStop(0.33, "#c72b3b");
+  g.addColorStop(0.55, "#345fa3");
+  g.addColorStop(0.75, "#28a6a6");
+  g.addColorStop(1.00, "#2ecc71");
+
+  ctx.beginPath();
+  ctx.lineWidth = Math.max(6, radius*0.14);
+  ctx.strokeStyle = g;
+  ctx.arc(cx, cy, radius, Math.PI, 2*Math.PI);
+  ctx.stroke();
+
+  // tiny ticks
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.strokeStyle='rgba(255,255,255,0.10)';
+  ctx.lineWidth=2;
+  for(let p of [0,25,50,75,100]){
+    const a = Math.PI + (p/100)*Math.PI;
+    const inner = radius - 6; const outer = radius + 4;
+    const x1 = Math.cos(a)*inner, y1 = Math.sin(a)*inner;
+    const x2 = Math.cos(a)*outer, y2 = Math.sin(a)*outer;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.fillStyle="rgba(255,255,255,0.75)";
+  ctx.font='600 9px Poppins';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const labels = [{text:'STRONG SELL',pct:0},{text:'SELL',pct:25},{text:'NEUTRAL',pct:50},{text:'BUY',pct:75},{text:'STRONG BUY',pct:100}];
+  labels.forEach(L=>{
+    const a = Math.PI + (L.pct/100)*Math.PI;
+    const lx = cx + Math.cos(a)*(radius*1.06);
+    const ly = cy + Math.sin(a)*(radius*1.06);
+    ctx.fillText(L.text,lx,ly);
+  });
+
+  return {cx,cy,radius};
+}
+function drawNeedle_small(ctx, geom, pct){
+  const {cx,cy,radius} = geom;
+  const angle = Math.PI + (pct/100)*Math.PI;
+
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle);
+
+  ctx.beginPath();
+  ctx.moveTo(-3,5);
+  ctx.lineTo(radius*0.66,0);
+  ctx.lineTo(-3,-5);
+  ctx.closePath();
+  ctx.fillStyle='#fff';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(0,0,6,0,2*Math.PI);
+  ctx.fillStyle='#0b0b0b';
+  ctx.fill();
+  ctx.lineWidth=2;
+  ctx.strokeStyle='#fff';
+  ctx.stroke();
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle='#fff';
+  ctx.font=`700 ${Math.round(radius*0.24)}px Poppins`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(Math.round(pct)+'%', cx, cy - radius*0.46);
+  ctx.restore();
+}
+
+class SmallGauge {
+  constructor(canvas){
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.W = canvas.width; this.H = canvas.height;
+    this.geom = drawStaticArc_small(this.ctx, this.W, this.H);
+    this.current = 50; this.target = 50; this.anim = false; this.frame=this.frame.bind(this);
+  }
+  set(v){ this.target = Math.max(0,Math.min(100,v)); if(!this.anim){ this.anim = true; requestAnimationFrame(this.frame); } }
+  frame(){
+    this.current += (this.target - this.current)*0.18;
+    this.ctx.clearRect(0,0,this.W,this.H);
+    this.geom = drawStaticArc_small(this.ctx, this.W, this.H);
+    drawNeedle_small(this.ctx, this.geom, this.current);
+    if(Math.abs(this.current - this.target) > 0.25) requestAnimationFrame(this.frame);
+    else { this.current = this.target; this.anim = false; }
+  }
+}
+
+/* init small gauges and resize logic */
+const niftyCanvas = document.getElementById('niftyCanvas');
+const bankCanvas  = document.getElementById('bankCanvas');
+
+function resizeSmallCanvases(){
+  // parent .gcol width & height
+  const nRect = niftyCanvas.getBoundingClientRect();
+  const bRect = bankCanvas.getBoundingClientRect();
+  niftyCanvas.width = Math.max(160, Math.floor(nRect.width));
+  niftyCanvas.height = Math.max(80, Math.floor(nRect.height));
+  bankCanvas.width  = Math.max(160, Math.floor(bRect.width));
+  bankCanvas.height = Math.max(80, Math.floor(bRect.height));
+}
+resizeSmallCanvases();
+
+const niftyGaugeSmall = new SmallGauge(niftyCanvas);
+const bankGaugeSmall  = new SmallGauge(bankCanvas);
+
+/* fetch allIndices function used for gauges */
+async function fetchAllIndices(){
+  const res = await fetch(PROXY_URL + encodeURIComponent(NSE_ALL), { cache:'no-store' });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+function pickIndex(json, keywords){
+  const arr = json?.data || [];
+  const keysUpper = keywords.map(k => k.toUpperCase());
+  for(const el of arr){
+    const label = ((el.index || el.name || '') + '').toUpperCase();
+    if(keysUpper.some(k => label.includes(k))) return el;
+  }
+  return null;
+}
+function percentFromAdvDec(adv, dec){ if(adv + dec === 0) return 50; return (adv / (adv + dec)) * 100; }
+
+async function updateGauges(){
+  try{
+    const json = await fetchAllIndices();
+    const niftyItem = pickIndex(json, ['NIFTY 50','NIFTY']);
+    const bankItem  = pickIndex(json, ['NIFTY BANK','BANKNIFTY','BANK NIFTY']);
+    const n = { adv: Number(niftyItem?.advances || 0), dec: Number(niftyItem?.declines || 0), unch: Number(niftyItem?.unchanged || 0) };
+    const b = { adv: Number(bankItem?.advances || 0), dec: Number(bankItem?.declines || 0), unch: Number(bankItem?.unchanged || 0) };
+    niftyGaugeSmall.set(percentFromAdvDec(n.adv, n.dec));
+    bankGaugeSmall.set(percentFromAdvDec(b.adv, b.dec));
+    lastUpdatedElem.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+  } catch(e){ console.error('updateGauges', e); }
+}
+
+/* ============================
+   Wire up refresh/update loops
+   ============================ */
+document.getElementById('refreshAllBtn').addEventListener('click', ()=>{ refreshAll(); fetchSectorData(); updateGauges(); });
+window.addEventListener('resize', ()=>{
+  // when window resizes, redraw treemaps and resize canvases
+  refreshAll();
+  fetchSectorData();
+  resizeSmallCanvases();
+});
+
+refreshAll();
+fetchSectorData();
+updateGauges();
+setInterval(()=>{ refreshAll(); fetchSectorData(); updateGauges(); }, REFRESH_MS);
+
+/* ------------- LIVE CLOCK ------------- */
+function updateClock(){
+  const now = new Date();
+  document.getElementById("liveClock").textContent =
+    now.toLocaleTimeString("en-GB", { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ------------- Go To Page Button ------------- */
+document.getElementById("gotoPageBtn").addEventListener("click", function(){
+  window.location.href = "ScreenerUI_OIClock.html";  // <-- change this to target page
+});
+
+
 </script>
 </body>
 </html>
