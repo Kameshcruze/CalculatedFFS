@@ -1,1261 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-  if (sessionStorage.getItem("loggedIn") !== "true") {
-      window.location.href = "index.html";
-  }
-</script>
-
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Intraday Stock Selector + OI Clock — Combined</title>
-
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-2NQNDY0TY7"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-2NQNDY0TY7');
-</script>
-
-
-<!-- Chart.js CDN (used by OI Clock) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OI Clock — Login</title>
 <style>
-  /* ---------- Combined Styles (TrialUI + OI Clock) ---------- */
-
-  /* ---------- Global ---------- */
-  *{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',sans-serif;}
-  body{background:#0b0c10;color:#c5c6c7;line-height:1.45;-webkit-font-smoothing:antialiased;}
-  a{text-decoration:none;color:inherit;}
-
-  /* ---------- Nav ---------- */
-  nav{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#121417;border-bottom:1px solid #1f2833;position:sticky;top:0;z-index:1000;}
-  .left{display:flex;align-items:center;gap:18px;}
-  .logo{font-weight:700;color:#66fcf1;font-size:1.15rem;}
-  .menu{display:flex;gap:8px;}
-  .menu button{background:transparent;border:none;padding:8px 12px;border-radius:6px;color:#c5c6c7;cursor:pointer;font-weight:600;}
-  .menu button.active{background:#0f8899;color:#041217;}
-  .nav-right{display:flex;align-items:center;gap:12px;color:#9fe7e2;font-weight:600;}
-  .current-time{font-size:.95rem;color:#cdeef0;}
-
-  /* ---------- Container ---------- */
-  .container{width:94%;max-width:1400px;margin:18px auto;display:flex;flex-direction:column;gap:18px;padding-bottom:60px;}
-/* ---------- Fullscreen layout for OI Clock ---------- */
-/* ---------- Restore bordered panels for Screener (full-width) ---------- */
-#screenerSection {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 18px 2%;
-  background: #0b0c10;
-}
-
-/* Panel visual style inside full-width screener (overrides the previous "no-border" rule) */
-#screenerSection .panel {
-  background: #13171a;
-  border: 1px solid rgba(255,255,255,0.04);   /* subtle thin border */
-  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 14px;
-}
-
-/* Keep tables readable and horizontally scrollable on small screens */
-#screenerSection .panel table { width: 100%; }
-#screenerSection .panel > div, 
-#screenerSection .panel table { overflow-x: auto; }
-
-/* Make the two-column top row maintain gap and responsive collapse */
-#screenerSection .top-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media (max-width: 900px) {
-  #screenerSection .top-row {
-    grid-template-columns: 1fr;
-  }
-  #screenerSection { padding: 12px; }
-  #screenerSection .panel { padding: 10px; }
-  #screenerSection table { font-size: 0.86rem; }
-}
-
-  
-#oiClockSection {
-  background:#0b0c10;
-  position:relative;
-  width:100%;
-  max-width:none;
-  margin:0;
-  padding:0 2%;
-}
-#oiClockSection .card {
-  border:none;
-  background:transparent;
-  box-shadow:none;
-}
-#oiClockSection .grid-oi {
-  grid-template-columns: 1fr 420px;
-  gap:20px;
-  margin-top:16px;
-}
-@media(max-width:900px){
-  #oiClockSection .grid-oi {
-    grid-template-columns:1fr;
-  }
-}
-
-
-  /* ========== INDEX / HEATMAP (dynamic mosaic) ========== */
-  #indexSection{display:none;}
-  .heatmap-wrap{background:#13171a;border:1px solid #1e2427;padding:14px;border-radius:10px;}
-  .heatmap-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;}
-  .heatmap-info{color:#9fe7e2;font-weight:600;}
-  .heatmap-grid{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    align-items:flex-start;
-    justify-content:flex-start;
+  /* ===== General Setup ===== */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
   }
 
-  .tile{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    justify-content:center;
-    padding:10px;
-    border-radius:6px;
-    color:#041217;
-    font-weight:700;
-    cursor:pointer;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.45);
-    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-    position:relative;
-    overflow:visible;
+  body {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    background: linear-gradient(135deg, #0d1117, #000);
   }
-  .tile:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,0.6);opacity:0.98;}
-  .tile .name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .tile .chg{margin-top:6px;font-size:13px;}
-  .tile .tt{
-    position:absolute;left:8px;top:8px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 8px;border-radius:6px;font-size:12px;display:none;z-index:30;
-  }
-  .tile:hover .tt{display:block;}
 
-  /* ========== Screener (keeps finalized layout) ========== */
-  #screenerSection{display:none;}
-  .top-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  @media(max-width:900px){
-    .top-row{
-      grid-template-columns:repeat(2,1fr);
-      gap:8px;
+  /* ===== Live Animated Background ===== */
+  .background {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: float 15s infinite ease-in-out;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0) scale(1); opacity: 0.3; }
+    50% { transform: translateY(-60px) scale(1.2); opacity: 0.6; }
+    100% { transform: translateY(0) scale(1); opacity: 0.3; }
+  }
+
+  .circle:nth-child(1) {
+    width: 250px; height: 250px;
+    background: radial-gradient(circle, #0078ff55, transparent);
+    top: 10%; left: 15%;
+    animation-delay: 0s;
+  }
+
+  .circle:nth-child(2) {
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, #00c6ff55, transparent);
+    bottom: 15%; right: 10%;
+    animation-delay: 3s;
+  }
+
+  .circle:nth-child(3) {
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, #005eff55, transparent);
+    top: 60%; left: 25%;
+    animation-delay: 6s;
+  }
+
+  /* ===== Glassmorphism Container ===== */
+  .login-container {
+    position: relative;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 45px 50px;
+    width: 360px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    animation: fadeIn 1.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .login-container h2 {
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+    letter-spacing: 1px;
+    color: #fff;
+  }
+
+  .input-box {
+    margin-bottom: 25px;
+  }
+
+  .input-box input {
+    width: 100%;
+    padding: 12px 15px;
+    border: none;
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #fff;
+    transition: 0.3s;
+  }
+
+  .input-box input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 12px rgba(0, 140, 255, 0.4);
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #0078ff, #00c6ff);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+  }
+
+  .login-btn:hover {
+    background: linear-gradient(135deg, #00c6ff, #0078ff);
+    transform: scale(1.03);
+    box-shadow: 0 0 12px rgba(0, 140, 255, 0.5);
+  }
+
+  .error {
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .footer-text {
+    margin-top: 25px;
+    font-size: 0.85rem;
+    color: #999;
+  }
+
+  @media (max-width: 420px) {
+    .login-container {
+      width: 90%;
+      padding: 30px 25px;
     }
   }
-  .panel{background:#13171a;border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(0,0,0,0.45);border:1px solid #1e2427;}
-  h2{color:#66fcf1;text-align:center;margin-bottom:6px;}
-  .header-line{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
-  .meta{color:#9fe7e2;font-size:.85rem;}
-  .search-wrap{display:flex;align-items:center;gap:6px;}
-  input.search{padding:6px 10px;border-radius:6px;border:none;background:#0f1214;color:#c5c6c7;font-size:.88rem;width:170px;}
-  input.search:focus{outline:1px solid #45a29e;}
-  .clear-btn{background:none;border:none;color:#66fcf1;font-size:1.1rem;cursor:pointer;display:none;}
-  .clear-btn:hover{color:#ff6b6b;}
-
-  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.92rem;table-layout:fixed;}
-  th,td{padding:8px 10px;border-bottom:1px solid rgba(69,162,158,0.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  th{background:#0b0c10;color:#66fcf1;font-size:.9rem;text-align:center;}
-  td{color:#e2e2e2;text-align:center;}
-  td:first-child,th:first-child{text-align:left;width:200px;}
-  tbody{display:block;max-height:420px;overflow-y:auto;}
-  thead,tbody tr{display:table;width:100%;table-layout:fixed;}
-  tbody::-webkit-scrollbar{width:6px;}
-  tbody::-webkit-scrollbar-thumb{background:#45a29e66;border-radius:6px;}
-  tr:hover{background:#0d1012;transition:background .2s ease;}
-  .green{color:#00ff99;font-weight:700;}
-  .red{color:#ff6b6b;font-weight:700;} 
-
-  .sector-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-  @media(max-width:1200px){.sector-grid{grid-template-columns:repeat(2,1fr);} }
-  @media(max-width:760px){.sector-grid{grid-template-columns:1fr;} }
-  .sector-panel{padding:10px;border-radius:8px;background:#13171a;border:1px solid #1e2427;}
-  .sector-panel h3{color:#66fcf1;text-align:center;font-size:.95rem;margin-bottom:5px;}
-  .sector-panel .last-upd{text-align:center;color:#9fe7e2;font-size:.82rem;margin-bottom:6px;}
-
-  .stock-link{color:#66fcf1;cursor:pointer;font-weight:600;}
-  .stock-link:hover{color:#00bcd4;text-decoration:underline;}
-
-  /* ---------- Fix sector table column widths ---------- */
-  .sector-panel table {
-    table-layout: auto !important;
-  }
-  .sector-panel th,
-  .sector-panel td {
-    white-space: nowrap;
-    overflow: visible;
-    text-overflow: unset;
-  }
-  .sector-panel td:first-child {
-    width: 180px;
-  }
-  .sector-panel td:nth-child(2),
-  .sector-panel td:nth-child(3),
-  .sector-panel td:nth-child(4),
-  .sector-panel td:nth-child(5) {
-    width: auto;
-  }
-
-  /* ---------- OI Clock Styles (from oi-clock.html) ---------- */
-  :root{
-    --oi-bg:#0b0c10; --oi-muted:#9aa4b2; --oi-accent:#56f0b1; --oi-danger:#ff6b6b;
-  }
-  .oi-container{max-width:1200px;margin:18px auto;padding:12px;}
-  .oi-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-  .oi-title{font-size:20px;margin:0}
-  .oi-nav{display:flex;gap:8px}
-  .aBtn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:var(--muted);text-decoration:none}
-  .grid-oi{display:grid;grid-template-columns:1fr 360px;gap:12px;margin-top:14px}
-  @media(max-width:900px){.grid-oi{grid-template-columns:1fr}}
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03)}
-  .small{color:var(--muted);font-size:13px}
-  .controls{display:flex;gap:8px;align-items:center}
-  .canvasWrap{height:520px}
-  .stat{font-weight:700}
-
-  /* small spacing for OI section inside main container to match look */
-  #oiClockSection .card { margin-bottom: 6px; }
-
-  /* ---------- Full Width Screener + OI Clock ---------- */
-#screenerSection, #oiClockSection {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0 2%;
-  background: #0b0c10;
-}
-
-
-/* Keep OI Clock clean, but restore Screener borders */
-#oiClockSection .card {
-  border: none;
-  background: transparent;
-  box-shadow: none;
-}
-
-/* Screener panels — visible border + shadow */
-#screenerSection .panel {
-  background: #13171a;
-  border: 1px solid #1e2427;  /* visible border */
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-  border-radius: 10px;
-}
-/* Make tables & grids responsive */
-@media(max-width: 900px) {
-  .top-row, .sector-grid {
-    grid-template-columns: 1fr !important;
-  }
-  table {
-    font-size: 0.85rem;
-  }
-  th, td {
-    padding: 6px 8px;
-  }
-  input.search {
-    width: 100%;
-  }
-}
-
-/* Dropdown Container */
-.dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-/* Button Look */
-.dropbtn {
-  background: transparent;
-  border: none;
-  color: #c5c6c7;
-  font-weight: 600;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 6px;
-}
-.dropbtn:hover {
-  background: #1a1e22;
-  color: #66fcf1;
-}
-
-/* Dropdown Menu Panel start */
-.dropdown-content {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #121417;
-  min-width: 600px;
-  padding: 16px 20px;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.45);
-  border: 1px solid #1f2833;
-  border-radius: 10px;
-  z-index: 999;
-  display: flex;
-  gap: 40px;
-}
-
-/* Column Style */
-.dropdown-content .col {
-  display: flex;
-  flex-direction: column;
-  min-width: 180px;
-}
-.dropdown-content h4 {
-  color: #66fcf1;
-  margin-bottom: 8px;
-  font-size: 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 4px;
-}
-.dropdown-content a {
-  color: #c5c6c7;
-  padding: 4px 0;
-  font-size: 13px;
-  text-decoration: none;
-}
-.dropdown-content a:hover {
-  color: #66fcf1;
-}
-
-/* Show on Hover */
-.dropdown:hover .dropdown-content {
-  display: flex;
-}
-
-.dropdown-content {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(10px);
-  transition: all 0.25s ease;
-}
-.dropdown:hover .dropdown-content {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-/* Dropdown Menu Panel end */
-
-
-/* Full-screen Swing Picks table */
-#swingSection {
-  width: 100%;
-  max-width:100% !important;
-  margin: 0;
-  padding: 10px 2%;
-}
-
-#swingSection h2 {
-  margin: 10px 0;
-  font-size: 22px;
-  color: #66fcf1;
-}
-
-.swing-table-wrapper {
-     width:100%;
-    max-width:100%;
-    overflow-y:auto;
-    overflow-x:auto;
-    background:#121212;
-    padding:0;
-    margin:0;
-}
-
-/* Make table expand full width */
-.swing-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-
 </style>
 </head>
 <body>
-<nav>
-  <div class="left">
-    <div class="logo">📊 Intraday Stock Selector</div>
-    <div class="menu" role="navigation">
-      <button id="btnDashboard">Dashboard</button>
-      <button id="btnIndex">Index</button>
-      <button id="btnScreener">Screener</button>
-      <button id="btnOIClock" class="active">OI Clock</button>
-    
-      <div class="dropdown">
-        <button class="dropbtn">Market Data ▼</button>
-        <div class="dropdown-content">
-          <div class="col">
-            <h4>Equity</h4>
-            <a href="heatmap-bargraph.html">sector heatmap</a>
-            <a href="#" id="openSwing">Swing Picks</a>
-            <a href="#">Market1</a>
-            <a href="#">market2</a>
-            
 
-          </div>
-          <div class="col">
-            <h4>Derivatives</h4>
-            <a href="#">Oi</a>
-            <a href="#">oi</a>
-            <a href="#">OI </a>
-            <a href="#">oi</a>
-          </div>
-          <div class="col">
-            <h4>test</h4>
-            <a href="#">test</a>
-            <a href="#">test Trades</a>
-            <a href="#">test </a>
-          </div>
-        </div>
-      </div>
-
-
-
-      
-    </div>
+  <!-- Background Animation -->
+  <div class="background">
+    <div class="circle"></div>
+    <div class="circle"></div>
+    <div class="circle"></div>
   </div>
-  <div class="nav-right">
-    <div>🕒</div><div id="navCurrentTime" class="current-time">--:--:--</div>
+
+  <!-- Login Box -->
+  <div class="login-container">
+    <h2>Login</h2>
+    <div class="input-box">
+      <input type="text" id="username" placeholder="Username" autocomplete="off" />
+    </div>
+    <div class="input-box">
+      <input type="password" id="password" placeholder="Password" />
+    </div>
+    <button class="login-btn" onclick="validateLogin()">Login</button>
+    <p class="error" id="error-msg">Invalid username or password</p>
+    <div class="footer-text">© 2025 Intraday Stock Selector</div>
   </div>
-</nav>
 
-<div class="container">
+  <script>
+    function validateLogin() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorMsg = document.getElementById("error-msg");
 
-    <!-- DASHBOARD (Sector Performance Chart Integrated) -->
-    <section id="dashboardSection" style="display:none;">
-      <div class="panel" style="text-align:center;">
-        <h2>Sector Performance — Market Overview</h2>
-        <p class="meta">Live NSE Sector % Change (Auto-refresh every 30s)</p>
-  
-        <div style="height:700px;margin-top:10px;">
-          <canvas id="sectorChart"></canvas>
-        </div>
-  
-        <div class="meta" style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
-          <span id="lastUpdated">Last updated: --</span>
-          <button id="refreshSectorBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#ccc;border-radius:8px;padding:5px 10px;cursor:pointer;">Refresh</button>
-        </div>
-  
-        <div id="errorBox" class="error"></div>
-      </div>
-  
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-      <script>
-        const PROXY_URL = "https://nse-proxy-akon.kameshravirks.workers.dev/?url=";
-        const NSE_URL = "https://www.nseindia.com/api/allIndices";
-  
-        const sectors = [
-          "NIFTY BANK","NIFTY ENERGY","NIFTY FMCG","NIFTY IT",
-          "NIFTY FINSERV","NIFTY METAL","NIFTY PHARMA","NIFTY AUTO",
-          "NIFTY PSU BANK","NIFTY MEDIA","NIFTY REALTY"
-        ];
-  
-        let sectorChart;
-        const ctx = document.getElementById("sectorChart").getContext("2d");
-        const refreshSectorBtn = document.getElementById("refreshSectorBtn");
-        const lastUpdated = document.getElementById("lastUpdated");
-        const errorBox = document.getElementById("errorBox");
-  
-        refreshSectorBtn.addEventListener("click", fetchSectorData);
-  
-        async function fetchSectorData() {
-          errorBox.style.display = "none";
-          try {
-            const res = await fetch(PROXY_URL + encodeURIComponent(NSE_URL), {
-              headers: { "Accept": "application/json" }
-            });
-            if (!res.ok) throw new Error(res.statusText);
-            const json = await res.json();
-            const list = json.data || [];
-  
-            const values = [], colors = [];
-            sectors.forEach(sec => {
-              const f = list.find(x => (x.index || "").toUpperCase() === sec);
-              const change = f ? parseFloat(f.percentChange) || 0 : 0;
-              values.push(change);
-              colors.push(change > 0
-                ? "rgba(0,200,83,0.85)"
-                : change < 0
-                ? "rgba(255,59,48,0.85)"
-                : "rgba(200,200,200,0.2)"
-              );
-            });
-  
-            const data = {
-              labels: sectors,
-              datasets: [{
-                label: "% Change",
-                data: values,
-                backgroundColor: colors,
-                borderRadius: 8,
-                barThickness: 18
-              }]
-            };
-  
-            const options = {
-              indexAxis: "y",
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                datalabels: {
-                  color: "#fff",
-                  anchor: "end",
-                  align: "right",
-                  formatter: v => (v > 0 ? "+" : "") + v.toFixed(2) + "%",
-                  font: { weight: "600", size: 12 }
-                },
-                tooltip: {
-                  callbacks: {
-                    label: c => (c.raw > 0 ? "+" : "") + c.raw.toFixed(2) + "%"
-                  }
-                }
-              },
-              scales: {
-                x: {
-                  ticks: { color: "#aaa", callback: v => v + "%" },
-                  grid: { color: "rgba(255,255,255,0.05)" }
-                },
-                y: {
-                  ticks: { color: "#ddd", font: { size: 13, weight: 600 } },
-                  grid: { display: false }
-                }
-              }
-            };
-  
-            if (sectorChart) {
-              sectorChart.data = data;
-              sectorChart.update();
-            } else {
-              sectorChart = new Chart(ctx, { type: "bar", data, options, plugins: [ChartDataLabels] });
-            }
-  
-            lastUpdated.textContent = "Last updated: " + new Date().toLocaleTimeString();
-          } catch (e) {
-            errorBox.style.display = "block";
-            errorBox.textContent = "Failed to fetch data — " + e.message;
-            console.error(e);
-          }
-        }
-  
-        fetchSectorData();
-        setInterval(fetchSectorData, 30000);
-      </script>
-    </section>
-  
+      const validUsername = "admin";
+      const validPassword = "1234";
 
-  <!-- INDEX (DYNAMIC HEATMAP) -->
-  <section id="indexSection" style="display:none;">
-    <div class="heatmap-wrap">
-      <div class="heatmap-header">
-        <div class="heatmap-info">NIFTY 50 Dynamic Heatmap — size = strength, left → gainers, right → losers</div>
-        <div style="display:flex;gap:12px;align-items:center;">
-          <div style="color:#9fe7e2">Last Updated: <span id="indexLast">--:--:--</span></div>
-          <div style="color:#9fe7e2">Auto-refresh: 30s</div>
-        </div>
-      </div>
-      <div id="heatmapGrid" class="heatmap-grid" aria-live="polite"></div>
-    </div>
-  </section>
-<!-- PATCH: INSERT SWING PICKS SECTION BELOW -->
-<section id="swingSection" style="display:none; width:100%; max-width:none; padding:0 2%; margin:0;">
-    <h2>Swing Picks</h2>
-    <div id="swingUpdated" style="color:#9aa4b2;font-size:12px;margin-bottom:10px;">Loading...</div>
+      if (username === validUsername && password === validPassword) {
+        errorMsg.style.display = "none";
+        window.location.href = "ScreenerDashboard.html";
+        // Store login state in sessionStorage
+        sessionStorage.setItem("loggedIn", "true");
+        window.location.href = "ScreenerDashboard.html";
 
-    <div class="swing-table-wrapper">
-<table class="swing-table" style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead>
-          <tr style="background:#181818;">
-            <th style="padding:10px;text-align:left;color:#9aa4b2;">Symbol</th>
-            <th style="padding:10px;text-align:left;color:#9aa4b2;">Name</th>
-            <th style="padding:10px;color:#9aa4b2;">LTP</th>
-            <th style="padding:10px;color:#9aa4b2;">% Chg</th>
-            <th style="padding:10px;color:#9aa4b2;">Volume</th>
-          </tr>
-        </thead>
-        <tbody id="swingBody">
-          <tr><td colspan="5" style="text-align:center;color:#9aa4b2;">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-  <!-- END SWING PICKS SECTION -->
-
-
-</div>
-
-  <!-- SCREENER -->
-  <section id="screenerSection" style="display:none;">
-    <div class="top-row">
-      <div class="panel" id="highPanel">
-        <h2>High Powered Stocks 🔥</h2>
-        <div class="header-line">
-          <div class="meta">Last Updated: <span id="highLast">--:--:--</span></div>
-          <div class="search-wrap">
-            <input type="text" class="search" id="searchHigh" placeholder="🔍 Search symbol...">
-            <button class="clear-btn" id="clearHigh">×</button>
-          </div>
-        </div>
-        <table>
-          <thead><tr><th>Stock</th><th>LTP</th><th>%</th><th>P.Open</th><th>NR's</th></tr></thead>
-          <tbody id="highBody"></tbody>
-        </table>
-      </div>
-
-      <div class="panel" id="boostPanel">
-        <h2>Intraday Boost 🚀</h2>
-        <div class="header-line">
-          <div class="meta">Last Updated: <span id="boostLast">--:--:--</span></div>
-          <div class="search-wrap">
-            <input type="text" class="search" id="searchBoost" placeholder="🔍 Search symbol...">
-            <button class="clear-btn" id="clearBoost">×</button>
-          </div>
-        </div>
-        <table>
-          <thead><tr><th>Stock</th><th>LTP</th><th>%</th><th>Volume%</th><th>NR's</th></tr></thead>
-          <tbody id="boostBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <section id="screeners" class="sector-grid"></section>
-  </section>
-
-  <!-- OI CLOCK (merged as a separate section, visible only when nav button clicked) -->
-  <section id="oiClockSection" style="margin:0;padding:0;width:100%;max-width:none;">
-<div class="card" style="max-width:1920px; margin:auto; width:95%;">
-      <div class="oi-header" style="align-items:center;justify-content:space-between">
-        <div>
-          <h1 class="oi-title">OI Clock — Option Chain Viewer</h1>
-          <div class="small">Select index to view option-chain OI (Calls vs Puts)</div>
-        </div>
-        <div class="oi-nav">
-          <!-- These buttons act as navigation shortcuts inside the combined page -->
-          <button class="aBtn" id="navToScreener">Screener</button>
-          <button class="aBtn" id="navToSector">Sector Scope</button>
-          <button class="aBtn" id="navToOI">OI Clock</button>
-          <div class="controls">
-            <select id="selIndex" class="aBtn">
-              <option value="NIFTY">NIFTY</option>
-              <option value="BANKNIFTY">BANKNIFTY</option>
-              <option value="FINNIFTY">FINNIFTY</option>
-            </select>
-            <select id="interval" class="aBtn">
-              <option value="60000">60s</option>
-              <option value="90000" selected>90s</option>
-              <option value="120000">120s</option>
-            </select>
-            <button id="refreshBtn" class="aBtn">Refresh</button>
-            <div id="status" class="small" style="margin-left:8px">Idle</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid-oi">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div><div class="small">Option Chain — Per Strike (Top view)</div><div id="updated" style="font-weight:700;margin-top:6px">--</div></div>
-            <div style="text-align:right"><div class="small">Net Position</div><div id="netPos" class="stat">--</div></div>
-          </div>
-
-          <div style="margin-top:12px" class="canvasWrap">
-            <canvas id="oiCanvas"></canvas>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="small">Distribution</div>
-          <div style="margin-top:10px"><canvas id="donut" width="300" height="200"></canvas></div>
-          <div style="margin-top:12px">
-            <div class="small" style="color:#56f0b1">↑ Total Put OI (Bullish)</div><div id="totalPut" class="stat">--</div>
-            <div class="small" style="margin-top:8px;color:#ff6b6b">↓ Total Call OI (Bearish)</div><div id="totalCall" class="stat">--</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:12px" class="small">Hover a strike to view exact Call/Put OI. The chart shows calls in red (right) and puts in green (left) from centerline.</div>
-
-      <div style="height:30px"></div>
-      <div style="text-align:center" class="small">Auto-refresh every interval • Powered by Cloudflare Proxy • Keep an eye on OI rotation</div>
-    </div>
-  </section>
-
-
-<script>
-/* ========== Combined JS ========== */
-/* ---------- Shared helpers ---------- */
-function setTimeNav(){
-  const el = document.getElementById('navCurrentTime');
-  if(!el) return;
-  el.textContent = new Date().toLocaleTimeString();
-}
-setTimeNav();
-setInterval(setTimeNav, 1000);
-
-/* ---------- TrialUI (Screener + Index) JS ---------- */
-
-/* ========== Config ========== */
-const SHEET_ID = "1eil62K4Wrf2x3MvgM5jVGBzyFwjcYYatuoYb0N61e-E";
-const URL_MAIN = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=0`;
-const URL_SHEET2 = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=528507233`;
-const URL_SECTOR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=2068381642`;
-const REFRESH_MS = 30000;
-const SCALE_MAX = 5; // ±5% scaling range
-
-/* NIFTY50 symbols (uppercase) */
-const NIFTY50 = [
-  "ADANIENT","AMARAJABAT","AMBUJACEM","APOLLOHOSP","ASIANPAINT","AXISBANK","BAJAJ-AUTO","BAJFINANCE","BAJAJFINSV",
-  "BPCL","BRITANNIA","CIPLA","COALINDIA","DIVISLAB","DRREDDY","EICHERMOT","GRASIM","HCLTECH","HDFC",
-  "HDFCBANK","HDFCLIFE","HEROMOTOCO","HINDALCO","HINDUNILVR","ICICIBANK","INDUSINDBK","ITC","JSWSTEEL",
-  "KOTAKBANK","LT","M&M","MARUTI","NESTLEIND","NTPC","ONGC","POWERGRID","RELIANCE","SBILIFE","SBIN",
-  "SUNPHARMA","TATACONSUM","TATAMOTORS","TATASTEEL","TCS","ULTRACEMCO","UPL","WIPRO","BHARTIARTL","MOTHERSUMI"
-];
-
-/* Helpers */
-function safe(c){ return c && ('v' in c) ? c.v : ""; }
-function fTimeShort(d){ return d.toLocaleTimeString('en-IN',{hour12:true}); }
-function fTimeLong(d){ return d.toLocaleTimeString('en-US',{hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
-
-/* TradingView opener */
-function openTV(symbol){
-  const s = (symbol||"").toString().trim().toUpperCase();
-  if(!s) return;
-  const url = `https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(s)}&interval=5`;
-  window.open(url, '_blank');
-}
-
-/* load google sheet (gviz JSON) */
-async function loadSheet(url){
-  const res = await fetch(url);
-  const txt = await res.text();
-  return JSON.parse(txt.substr(47).slice(0,-2)).table;
-}
-
-/* Color interpolation */
-function colorForPct(pct){
-  const max = SCALE_MAX;
-  const v = clamp(pct, -max, max) / max; // -1 .. 1
-  if(v < 0){
-    const t = Math.abs(v);
-    const r = Math.round(47 + (198-47)*t);
-    const g = Math.round(47 + (40-47)*t);
-    const b = Math.round(47 + (40-47)*t);
-    return `rgb(${r},${g},${b})`;
-  } else {
-    const t = v;
-    const r = Math.round(47 + (46-47)*t);
-    const g = Math.round(47 + (125-47)*t);
-    const b = Math.round(47 + (50-47)*t);
-    return `rgb(${r},${g},${b})`;
-  }
-}
-
-/* Size computation */
-function sizeForPct(pct){
-  const absPct = Math.min(Math.abs(pct), SCALE_MAX);
-  const norm = absPct / SCALE_MAX; // 0..1
-  const base = 110; // base width px
-  const extra = 220; // extra width at max pct
-  const width = Math.round(base + extra * norm);
-  const height = Math.round(80 + 120 * norm); // base height 80 -> bigger with intensity
-  return {width, height};
-}
-
-/* ---------- Build Heatmap (dynamic mosaic-like) ---------- */
-async function buildIndex(mainTable, sheet2RowsMap){
-  const rows = mainTable.rows.slice(1).map(r=> (r.c||[]).map(safe));
-  const mapBySym = {};
-  rows.forEach(r => {
-    const s = (r[0]||"").toString().trim().toUpperCase();
-    if(s) mapBySym[s] = r;
-  });
-
-  const data = [];
-  NIFTY50.forEach(sym => {
-    const r = mapBySym[sym];
-    if(r) {
-      const pct = (parseFloat(r[8]) || 0) * 100;
-      const ltp = r[4] || "";
-      data.push({symbol: sym, pct, ltp, row: r});
-    }
-  });
-
-  const dataRows = (data.length ? data : rows.slice(0,50).map(r => ({ symbol:(r[0]||"").toString().trim().toUpperCase(), pct: (parseFloat(r[8])||0)*100, ltp: r[4] || "", row:r })));
-
-  dataRows.sort((a,b) => b.pct - a.pct);
-
-  const grid = document.getElementById('heatmapGrid');
-  grid.innerHTML = '';
-
-  dataRows.forEach(d => {
-    const tile = document.createElement('div');
-    tile.className = 'tile';
-    const pct = clamp(d.pct, -SCALE_MAX, SCALE_MAX);
-    const bg = colorForPct(pct);
-    const {width, height} = sizeForPct(pct);
-    tile.style.width = width + 'px';
-    tile.style.height = height + 'px';
-    tile.style.background = bg;
-    tile.style.color = '#041217';
-    const nameEl = document.createElement('div');
-    nameEl.className = 'name';
-    nameEl.textContent = d.symbol;
-    const chgEl = document.createElement('div');
-    chgEl.className = 'chg';
-    chgEl.textContent = (d.pct >= 0 ? '+' : '') + d.pct.toFixed(2) + '%';
-    const tt = document.createElement('div');
-    tt.className = 'tt';
-    tt.innerText = `${d.symbol} · LTP: ${d.ltp || '—'} · ${d.pct>=0?'+':''}${d.pct.toFixed(2)}%`;
-    tile.appendChild(tt);
-    tile.appendChild(nameEl);
-    tile.appendChild(chgEl);
-    tile.title = `${d.symbol} ${d.pct>=0?'+':''}${d.pct.toFixed(2)}% — LTP: ${d.ltp || '—'}`;
-    tile.onclick = () => openTV(d.symbol);
-    grid.appendChild(tile);
-  });
-
-  document.getElementById('indexLast').textContent = fTimeLong(new Date());
-}
-
-/* ---------- Screener rendering (finalized) ---------- */
-function addSearch(input,clearBtn,body){
-  input.addEventListener("input",()=>{
-    const t=input.value.toUpperCase();
-    clearBtn.style.display = t ? "inline" : "none";
-    [...body.rows].forEach(r=> r.style.display = (r.cells[0].innerText.toUpperCase().includes(t) ? "" : "none"));
-  });
-  clearBtn.onclick = ()=>{ input.value=""; clearBtn.style.display="none"; [...body.rows].forEach(r=>r.style.display=""); };
-}
-
-function stockLinkHTML(symbol){
-  const sym = (symbol||"").toString().trim().toUpperCase();
-  return `<span class="stock-link" onclick="window.open('https://www.tradingview.com/chart/?symbol=NSE:${encodeURIComponent(sym)}&interval=5','_blank')">${sym}</span>`;
-}
-
-/* Render high & boost & sectors (using same logic as before) */
-function renderHigh(rows, s2) {
-  const body = document.getElementById('highBody'); body.innerHTML = '';
-  rows.sort((a,b)=>parseFloat(b[13]||0)-parseFloat(a[13]||0));
-  rows.slice(0,200).forEach(r=>{
-    const pct=(parseFloat(r[8])||0)*100;
-    const sym=(r[0]||"").toString().trim(), ltp=r[4]||"", pre=r[13]||"";
-    const match = s2.find(x => ((x[0]||"").toString().trim().toUpperCase() === sym.toString().trim().toUpperCase()));
-    const colJ = match ? match[9] : "";
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td title="${sym}">${stockLinkHTML(sym)}</td><td>${ltp}</td><td class="${pct<0?'red':'green'}">${pct.toFixed(2)}%</td><td>${pre}</td><td>${colJ}</td>`;
-    body.appendChild(tr);
-  });
-  document.getElementById('highLast').textContent = fTimeLong(new Date());
-  addSearch(document.getElementById('searchHigh'), document.getElementById('clearHigh'), body);
-}
-
-function renderBoost(rows, s2) {
-  const body = document.getElementById('boostBody'); body.innerHTML = '';
-  rows.sort((a,b)=>parseFloat(b[12]||0)-parseFloat(a[12]||0));
-  rows.slice(0,200).forEach((r,i)=>{
-    const pct=(parseFloat(r[8])||0)*100;
-    const vol=(parseFloat(r[12])||0)*100;
-    const colJ=(s2[i+1] && s2[i+1][9]) || "";
-    const tr=document.createElement('tr');
-    tr.innerHTML = `<td title="${r[0]}">${stockLinkHTML(r[0])}</td><td>${r[4]}</td><td class="${pct<0?'red':'green'}">${pct.toFixed(2)}%</td><td>${vol.toFixed(2)}%</td><td>${colJ}</td>`;
-    body.appendChild(tr);
-  });
-  document.getElementById('boostLast').textContent = fTimeLong(new Date());
-  addSearch(document.getElementById('searchBoost'), document.getElementById('clearBoost'), body);
-}
-
-function renderSectors(rows, s2, sectors) {
-  const container = document.getElementById('screeners'); container.innerHTML = '';
-  const grouped = {};
-  Object.entries(sectors).forEach(([sec,list])=>{
-    rows.filter(r => list.includes((r[0]||"").toUpperCase())).forEach(r => {
-      (grouped[sec] = grouped[sec] || []).push(r);
-    });
-  });
-  const ordered = Object.keys(grouped).sort();
-  ordered.forEach(sec => {
-    const list = grouped[sec];
-    list.sort((a,b)=>parseFloat(b[12]||0)-parseFloat(a[12]||0));
-    const div = document.createElement('div'); div.className='sector-panel';
-    div.innerHTML = `<h3>${sec}</h3><div class="last-upd">Last Updated: ${fTimeLong(new Date())}</div>
-      <table><thead><tr><th>Stock Name</th><th>LTP</th><th>%</th><th>Volume%</th><th>Info</th></tr></thead><tbody></tbody></table>`;
-    const tb = div.querySelector('tbody');
-    list.forEach(r=>{
-      const pct=(parseFloat(r[8])||0)*100;
-      const vol=(parseFloat(r[12])||0)*100;
-      const colJ=(s2.find(x=> (x[0]||"").toString().trim().toUpperCase() === (r[0]||"").toString().trim().toUpperCase()) || [])[9] || "";
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td title="${r[0]}">${stockLinkHTML(r[0])}</td><td>${r[4]}</td><td class="${pct<0?'red':'green'}">${pct.toFixed(2)}%</td><td>${vol.toFixed(2)}%</td><td>${colJ}</td>`;
-      tb.appendChild(tr);
-    });
-    container.appendChild(div);
-  });
-}
-
-/* ---------- Full build (index + screener) ---------- */
-async function buildAll(){
-  try{
-    const [mainTbl, sheet2Tbl, sectorTbl] = await Promise.all([loadSheet(URL_MAIN), loadSheet(URL_SHEET2), loadSheet(URL_SECTOR)]);
-    const mainRows = mainTbl.rows.slice(1).map(r => (r.c||[]).map(safe));
-    const s2 = (sheet2Tbl && sheet2Tbl.rows) ? sheet2Tbl.rows.map(r => (r.c||[]).map(safe)) : [];
-    const sectors = {};
-    (sectorTbl.rows||[]).forEach(r=>{
-      const sym = (safe(r.c[0])||"").toString().trim().toUpperCase();
-      const sec = (safe(r.c[3])||"UNCLASSIFIED").toString().trim().toUpperCase();
-      if(sec && sec!=="UNCLASSIFIED") (sectors[sec] = sectors[sec] || []).push(sym);
-    });
-
-    await buildIndex(mainTbl, s2);
-    renderHigh(mainRows, s2);
-    renderBoost(mainRows, s2);
-    renderSectors(mainRows, s2, sectors);
-  } catch (err){
-    console.error('buildAll error', err);
-  }
-}
-
-/* initial + periodic refresh */
-buildAll();
-setInterval(buildAll, REFRESH_MS);
-
-/* ---------- Nav toggles (combined) ---------- */
-const idxBtn = document.getElementById('btnIndex');
-const scrBtn = document.getElementById('btnScreener');
-const dashBtn = document.getElementById('btnDashboard');
-const oiBtn = document.getElementById('btnOIClock');
-
-const indexSection = document.getElementById('indexSection');
-const screenerSection = document.getElementById('screenerSection');
-const dashboardSection = document.getElementById('dashboardSection');
-const oiClockSection = document.getElementById('oiClockSection');
-
-function hideAllSections(){
-  indexSection.style.display = 'none';
-  screenerSection.style.display = 'none';
-  dashboardSection.style.display = 'none';
-  oiClockSection.style.display = 'none';
-   swingSection.style.display='none'; 
-}
-
-function setActive(button){
-  document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
-  if(button) button.classList.add('active');
-}
-
-/* set up nav clicks */
-idxBtn.onclick = () => { setActive(idxBtn); hideAllSections(); indexSection.style.display='block'; };
-scrBtn.onclick = () => { setActive(scrBtn); hideAllSections(); screenerSection.style.display='block'; };
-dashBtn.onclick = () => { setActive(dashBtn); hideAllSections(); dashboardSection.style.display='block'; };
-oiBtn.onclick = () => { setActive(oiBtn); hideAllSections(); oiClockSection.style.display='block'; };
-
-/* default = Dashboard */
-dashBtn.click();
-
-
-/* ---------- End of TrialUI JS ---------- */
-
-
-/* ---------- OI Clock JS (almost unchanged, integrated) ---------- */
-
-/* ======= CONFIG ======= */
-const proxy = 'https://nse-proxy-akon.kameshravirks.workers.dev/?url=';
-const OPTION_API = idx => proxy + encodeURIComponent(`https://www.nseindia.com/api/option-chain-indices?symbol=${idx}`);
-let donutChart = null;
-let oiChart = null;
-let timer = null;
-
-/* ======= HELPERS ======= */
-function setStatus(t){ const s = document.getElementById('status'); if(s) s.textContent = t; }
-
-async function fetchJson(url){
-  const r = await fetch(url, { headers:{ accept:'application/json' }});
-  const txt = await r.text();
-  try { return JSON.parse(txt); } catch(e){ return null; }
-}
-
-/* ======= MERGE EXPIRIES (Dynamic by Index) ======= */
-function mergeNearestTwoExpiries(records, idx) {
-  if (!Array.isArray(records) || records.length === 0) return [];
-
-  function parseExpiry(s) {
-    const d = new Date(s);
-    return isNaN(d) ? null : d;
-  }
-
-  const expiryMap = new Map();
-  for (const r of records) {
-    const e = r.expiryDate ?? r.expiry ?? null;
-    if (e && !expiryMap.has(e)) expiryMap.set(e, { raw: e, parsed: parseExpiry(e) });
-  }
-
-  const expiryArr = Array.from(expiryMap.values())
-    .sort((a, b) => (a.parsed || Infinity) - (b.parsed || Infinity));
-
-  let targetExpiries = [];
-  if (idx === 'NIFTY') {
-    targetExpiries = expiryArr.slice(0, 2).map(e => e.raw); // merge 2 nearest
-  } else {
-    targetExpiries = expiryArr.slice(0, 1).map(e => e.raw); // only nearest expiry
-  }
-
-  const filtered = records.filter(r => targetExpiries.includes(r.expiryDate));
-
-  const merged = {};
-  for (const r of filtered) {
-    const strike = Number(r.strikePrice ?? r.strike);
-    if (isNaN(strike)) continue;
-    const ce = Number(r.CE?.openInterest ?? 0);
-    const pe = Number(r.PE?.openInterest ?? 0);
-    if (!merged[strike]) merged[strike] = { strike, ceOI: 0, peOI: 0 };
-    merged[strike].ceOI += ce;
-    merged[strike].peOI += pe;
-  }
-
-  return Object.values(merged).sort((a, b) => a.strike - b.strike);
-}
-
-/* ======= FILL MISSING STRIKES ======= */
-function fillMissingStrikes(rows, idx){
-  if (idx !== 'NIFTY' || !rows.length) return rows;
-  const step = 50;
-  const all = [];
-  const min = Math.floor(rows[0].strike/step)*step;
-  const max = Math.ceil(rows[rows.length-1].strike/step)*step;
-  for(let s=min;s<=max;s+=step) all.push(s);
-  const map = Object.fromEntries(rows.map(r=>[r.strike,r]));
-  return all.map(s=>map[s]||{strike:s,ceOI:0,peOI:0});
-}
-
-/* ======= RENDER OI CHART ======= */
-function renderOIChart(rows, atmStrike, idx){
-  const labels = rows.map(r=>Number(r.strike).toLocaleString('en-IN'));
-  const callVals = rows.map(r=>r.ceOI);
-  const putVals = rows.map(r=>-r.peOI);
-  let tol = 25; if(idx==='BANKNIFTY'||idx==='FINNIFTY') tol=100;
-  const atmIndex = rows.findIndex(r=>Math.abs(r.strike-atmStrike)<=tol);
-  const ctx = document.getElementById('oiCanvas').getContext('2d');
-  if(oiChart) oiChart.destroy();
-  oiChart = new Chart(ctx,{
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'Puts (Bullish)',data:putVals,backgroundColor:c=>c.dataIndex===atmIndex?'rgba(86,240,177,0.9)':'rgba(78,225,161,0.6)',borderColor:c=>c.dataIndex===atmIndex?'#00ffbb':null,borderWidth:c=>c.dataIndex===atmIndex?2:0,borderRadius:6},
-      {label:'Calls (Bearish)',data:callVals,backgroundColor:c=>c.dataIndex===atmIndex?'rgba(255,107,107,0.9)':'rgba(255,107,107,0.6)',borderColor:c=>c.dataIndex===atmIndex?'#ff7070':null,borderWidth:c=>c.dataIndex===atmIndex?2:0,borderRadius:6}
-    ]},
-    options:{
-      indexAxis:'y',
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'top',labels:{color:'#cfe6e6'}},
-        tooltip:{callbacks:{
-          title:i=>'Strike: '+Number(i[0].label.replace(/,/g,'')).toLocaleString('en-IN'),
-          label:c=>c.dataset.label+': '+Math.abs(c.parsed.x).toLocaleString()
-        }}
-      },
-      scales:{
-        x:{ticks:{color:'#cfe6e6',callback:v=>Math.abs(v).toLocaleString()},grid:{color:'rgba(255,255,255,0.03)'}},
-        y:{ticks:{color:'#cfe6e6'},grid:{display:false}}
+      } else {
+        errorMsg.style.display = "block";
       }
     }
-  });
-}
 
-/* ======= RENDER DONUT ======= */
-function renderDonut(totalCall, totalPut) {
-  const ctx = document.getElementById('donut').getContext('2d');
-  if (donutChart) donutChart.destroy();
-
-  const total = totalCall + totalPut;
-
-  donutChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Puts (Bullish)', 'Calls (Bearish)'],
-      datasets: [{
-        data: [totalPut, totalCall],
-        backgroundColor: [
-          'rgba(78,225,161,0.9)',
-          'rgba(255,107,107,0.9)'
-        ],
-        borderColor: '#ffffff',
-        borderWidth: 2.2,
-        cutout: '50%'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom', labels: { color: '#cfe6e6' } },
-        tooltip: { enabled: true }
-      },
-      layout: {
-        padding: { top: 10, bottom: 10 }
-      }
-    },
-    plugins: [{
-      id: 'donutLabels',
-      afterDraw(chart) {
-        const { ctx } = chart;
-        const meta = chart.getDatasetMeta(0);
-        const data = chart.data.datasets[0].data;
-        const total = data.reduce((a, b) => a + b, 0);
-
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = `${Math.round(chart.width / 25)}px 'Poppins', Inter, sans-serif`;
-        ctx.shadowColor = 'rgba(0,0,0,0.3)';
-        ctx.shadowBlur = 5;
-        ctx.lineWidth = 2;
-
-        meta.data.forEach((arc, i) => {
-          const angle = (arc.startAngle + arc.endAngle) / 2;
-          const radius = (arc.outerRadius + arc.innerRadius) / 2.3;
-          const x = arc.x + Math.cos(angle) * radius;
-          const y = arc.y + Math.sin(angle) * radius;
-
-          const pct = ((data[i] / total) * 100).toFixed(1) + '%';
-          ctx.fillStyle = '#ffffff';
-          ctx.fillText(pct, x, y);
-        });
-
-        ctx.restore();
-      }
-    }]
-  });
-}
-
-/* ======= MAIN UPDATE ======= */
-async function updateOI(){
-  const idx=document.getElementById('selIndex').value||'NIFTY';
-  setStatus('Updating '+idx+'...');
-  try{
-    const json=await fetchJson(OPTION_API(idx));
-    const recs=json?.records?.data||[];
-    if(!recs.length){setStatus('No data');return;}
-    let rows = mergeNearestTwoExpiries(recs, idx);
-    rows=fillMissingStrikes(rows,idx);
-    const underlying=json?.records?.underlyingValue??null;
-    let filtered=rows;
-    if(underlying){
-      const strikes=rows.map(r=>r.strike);
-      const idxATM=strikes.findIndex(s=>s>=underlying);
-      const start=Math.max(0,idxATM-10),end=Math.min(rows.length,idxATM+10);
-      filtered=rows.slice(start,end);
-    }
-    renderOIChart(filtered,underlying||0,idx);
-    const totals=rows.reduce((a,r)=>{a.call+=r.ceOI;a.put+=r.peOI;return a;},{call:0,put:0});
-    renderDonut(totals.call,totals.put);
-    document.getElementById('totalCall').textContent=totals.call.toLocaleString();
-    document.getElementById('totalPut').textContent=totals.put.toLocaleString();
-    document.getElementById('netPos').textContent='Bulls: '+totals.put.toLocaleString()+' | Bears: '+totals.call.toLocaleString();
-    document.getElementById('updated').textContent='Updated: '+new Date().toLocaleTimeString();
-    setStatus('Updated ✓ via Cloudflare');
-  }catch(e){
-    console.error(e);setStatus('Error loading');
-  }
-}
-
-/* ======= INIT OI CLOCK ======= */
-document.getElementById('refreshBtn').addEventListener('click',updateOI);
-document.getElementById('selIndex').addEventListener('change',()=>{clearInterval(timer);updateOI();timer=setInterval(updateOI,+document.getElementById('interval').value);});
-document.getElementById('interval').addEventListener('change',()=>{clearInterval(timer);timer=setInterval(updateOI,+document.getElementById('interval').value);});
-timer=setInterval(updateOI,90000);
-updateOI();
-
-/* small nav shortcuts inside OI area */
-document.getElementById('navToScreener').addEventListener('click', ()=> { scrBtn.click(); });
-document.getElementById('navToSector').addEventListener('click', ()=> { /* placeholder: if you had sector page, route later */ alert('Sector Scope shortcut — no external page in combined file.'); });
-document.getElementById('navToOI').addEventListener('click', ()=> { oiBtn.click(); });
-
-/* ---------- End OI Clock JS ---------- */
-
-// PATCH: ADD SWING PICKS SCRIPT BELOW
-
-// SWING PICKS CONFIG
-const SWING_PROXY = "https://nse-proxy-advanced.kameshravirks.workers.dev/?url=";
-const SWING_API   = "https://www.nseindia.com/api/live-analysis-volume-gainers";
-
-function formatVol(n){
-  if(n >= 1_000_000_000) return (n/1_000_000_000).toFixed(1)+"B";
-  if(n >= 1_000_000)     return (n/1_000_000).toFixed(1)+"M";
-  if(n >= 1_000)         return (n/1_000).toFixed(1)+"K";
-  return n;
-}
-
-function openSwingTV(symbol){
-  window.open(`https://www.tradingview.com/chart/?symbol=NSE:${symbol}&interval=D`, "_blank");
-}
-
-async function loadSwing(){
-  try {
-    const r = await fetch(SWING_PROXY + SWING_API);
-    const json = await r.json();
-    const rows = json.data || [];
-
-    const body = document.getElementById("swingBody");
-    body.innerHTML = "";
-
-    rows.forEach(r => {
-      const pct = Number(r.pChange);
-      const cls = pct >= 0 ? "color:#32d27d;" : "color:#ff6b6b;";
-
-      body.innerHTML += `
-        <tr onclick="openSwingTV('${r.symbol}')" style="cursor:pointer;">
-          <td style="padding:10px;">${r.symbol}</td>
-          <td style="padding:10px;">${r.companyName}</td>
-          <td style="padding:10px;">${r.ltp}</td>
-          <td style="padding:10px;${cls}">${pct.toFixed(2)}%</td>
-          <td style="padding:10px;">${formatVol(r.volume)}</td>
-        </tr>`;
+    // Allow Enter key to trigger login
+    document.addEventListener("keypress", function(e) {
+      if (e.key === "Enter") validateLogin();
     });
+  </script>
 
-    document.getElementById("swingUpdated").innerHTML =
-      "Updated: " + new Date().toLocaleTimeString();
-
-  } catch (err){
-    document.getElementById("swingBody").innerHTML =
-      `<tr><td colspan="5" style="text-align:center;color:#ff6b6b;">Error loading data</td></tr>`;
-  }
-}
-
-// visibility-based auto refresh
-let swingTimer = null;
-function startSwingAuto(){ if(swingTimer) clearInterval(swingTimer); swingTimer = setInterval(loadSwing, 60000); }
-function stopSwingAuto(){ if(swingTimer) clearInterval(swingTimer); }
-
-const obs = new MutationObserver(()=>{
-  const sec = document.getElementById("swingSection");
-  if(sec.style.display !== "none"){ loadSwing(); startSwingAuto(); }
-  else stopSwingAuto();
-});
-obs.observe(document.getElementById("swingSection"), { attributes:true, attributeFilter:["style"] });
-
-// NAV HANDLER for dropdown
-document.getElementById("openSwing").addEventListener("click",(e)=>{
-  e.preventDefault();
-  hideAllSections();
-  swingSection.style.display="block";
-  loadSwing();
-  window.scrollTo(0,0);
-  setActive(null);
-});
-</script>
-<!-- END SWING PICKS SCRIPT -->
-
-</script>
 </body>
 </html>
