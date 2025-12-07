@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nifty50-Live PnL</title>
+  <style>
+    :root { --bg:#0f1720; --card:#0b1220; --muted:#9fb0c8; --border:#16202b; --accent:#1664ff; --good:#7bd389; --bad:#ff8b8b; color-scheme: dark; }
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:#e6eef8; padding:18px; margin:0; }
+    /* Nav */
+    .nav { display:flex; align-items:center; gap:12px; padding:12px 18px; background:linear-gradient(180deg,#07101a,#08121a); border-bottom:1px solid var(--border); }
+    .nav .brand { font-weight:700; color:#fff; margin-right:12px; }
+    .nav a { text-decoration:none; }
+    .nav button { padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:rgba(18,30,50,0.6); color:#dfeeff; cursor:pointer; }
+    .nav button:hover { background:var(--accent); color:#fff; }
+    /* Page cards */
+    .container { padding:18px; max-width:1100px; margin:0 auto; }
+    .card { background:var(--card); border:1px solid var(--border); padding:14px; border-radius:10px; box-shadow: 0 6px 18px rgba(2,8,23,.5); margin-bottom:12px;}
+    h1 { margin:0 0 8px 0; font-size:18px; }
+    label{display:block; font-size:12px; color:var(--muted); margin-top:8px;}
+    input, select { padding:8px; border-radius:6px; border:1px solid #233240; background:#07101a; color:#dfeeff; width:100%; box-sizing:border-box;}
+    table { width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; }
+    th, td { padding:8px 6px; text-align:left; border-bottom:1px dashed #16202b; vertical-align:middle; }
+    .muted { color:var(--muted); font-size:12px; }
+    .green { color:var(--good); font-weight:600; }
+    .red { color:var(--bad); font-weight:600; }
+    button { padding:8px 10px; border-radius:6px; border:none; background:var(--accent); color:white; cursor:pointer; }
+    .row { display:flex; gap:12px; }
+    .col { flex:1; }
+    .small { font-size:12px; }
+    .small-btn { padding:6px 8px; font-size:13px; border-radius:6px; }
+    .meta { display:flex; gap:12px; align-items:center; margin-top:8px; }
+    .meta .box { background:#06101a; padding:8px 10px; border-radius:6px; border:1px solid #16202b; }
+    ul { margin:8px 0 0 18px; padding:0; }
+  </style>
+</head>
+<body>
+  <!-- Navigation bar (Screener UI style) -->
+  <div class="nav">
+    <div class="brand">Screener</div>
+    <a href="ScreenerDashboard.html"><button title="Open Screener">Screener</button></a>
+    <a href="heatmap-bargraph.html"><button title="Open Sector Scope">Sector Scope</button></a>
+    <!-- <a href="OIClock.html"><button title="Open OI Clock">OI Clock</button></a> -->
+    <div style="flex:1"></div>
+    <div class="muted" style="font-size:13px">Nifty 4-Leg Snapshot</div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h1>Nifty Backtesting Live PnL</h1>
+      <div class="muted">Captures 4 option entry prices at 09:20 IST (auto if open) and updates live P&L throughout the day. Snapshot persisted to localStorage.</div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="col">
+          <label>Lot size (per contract)</label>
+          <input id="lotSize" value="75" />
+          <label class="small muted">Change if exchange lot size differs (Nifty lot default 75).</label>
+        </div>
+        <div class="col">
+          <label>Quantity per leg (contracts)</label>
+          <input id="qty" value="1" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div class="col">
+          <label>Update interval (seconds)</label>
+          <input id="interval" value="5" />
+        </div>
+        <div class="col" style="display:flex; align-items:flex-end; gap:8px;">
+          <button id="capNow" class="small-btn">Capture snapshot now</button>
+          <button id="clearSnap" class="small-btn" style="background:#ff5c5c">Clear today's snapshot</button>
+          <button id="downloadCsv" class="small-btn" style="background:#2b9b2b" disabled>Download CSV</button>
+        </div>
+      </div>
+
+      <div id="status" class="muted" style="margin-top:10px"></div>
+
+      <div class="meta">
+        <div class="box muted">Captured date: <span id="capturedDate">—</span></div>
+        <div class="box muted">Captured time: <span id="capturedTime">—</span></div>
+        <div class="box muted">Spot at capture: <span id="capturedSpot">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted">Live prices & PnL</div>
+      <table id="liveTable">
+        <thead><tr><th>Leg</th><th>Strike (CE/PE)</th><th>Entry</th><th>Live</th><th>PnL (per contract)</th><th>PnL (total)</th></tr></thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr><th colspan="5" style="text-align:right">Total PnL:</th><th id="totalPnl">-</th></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="card muted small">
+      <ul>
+        <li>Captures 4 NIFTY option entries at 09:20 IST (or manually) and updates live prices & PnL all day.</li>
+        <li>Strike logic uses 50-point steps: ITM CE = floor(spot/50)*50, ITM PE = ceil(spot/50)*50, OTM CE = ITM_PE + 50, OTM PE = ITM_CE – 50.</li>
+        <li>Snapshot is stored locally (nifty_snapshot_YYYYMMDD), auto-corrected if outdated, and downloadable with current live prices & PnL.</li>
+      </ul>
+    </div>
+  </div>
+
+<script>
+/* Config */
+const PROXY_BASE = 'https://nse-proxy-advanced.kameshravirks.workers.dev'; // hidden from UI
+const TARGET_ENDPOINT = 'https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY';
+
+const $ = id => document.getElementById(id);
+const formatDateKey = (d = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}${m}${day}`;
+};
+function istNow(){ return new Date(); }
+
+// Build proxy URL expecting ?url=
+function buildOptionChainUrl(proxyBase) {
+  proxyBase = proxyBase.replace(/\/+$/, '');
+  return proxyBase + '/?url=' + encodeURIComponent(TARGET_ENDPOINT);
+}
+
+// Fetch JSON via proxy (robust)
+async function fetchOptionChain(proxyBase) {
+  const url = buildOptionChainUrl(proxyBase);
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(), 10000);
+
+  let res;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } catch (err) {
+    clearTimeout(timeout);
+    throw new Error('Network error or fetch aborted: ' + err.message);
+  }
+  clearTimeout(timeout);
+
+  const contentType = res.headers.get('content-type') || '';
+  const status = res.status;
+  let bodyText;
+  try {
+    bodyText = await res.text();
+  } catch (err) {
+    throw new Error('Failed reading response body: ' + err.message);
+  }
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${status} received from proxy. Response begins: ${bodyText.slice(0,200)}`);
+  }
+  if (contentType.indexOf('html') !== -1) {
+    throw new Error('Proxy returned HTML (blocked or misconfigured).');
+  }
+
+  let data;
+  try {
+    data = JSON.parse(bodyText);
+  } catch (err) {
+    throw new Error('Response not valid JSON. Parse error: ' + err.message);
+  }
+  return data;
+}
+
+// Spot detection using the option-chain structure
+function getSpotFromChain(chain) {
+  if (!chain) return null;
+  if (chain.records && typeof chain.records.underlyingValue !== 'undefined' && !Number.isNaN(Number(chain.records.underlyingValue))) {
+    return Number(chain.records.underlyingValue);
+  }
+  if (typeof chain.underlyingValue !== 'undefined' && !Number.isNaN(Number(chain.underlyingValue))) {
+    return Number(chain.underlyingValue);
+  }
+  try {
+    if (chain.records && Array.isArray(chain.records.data) && chain.records.data.length) {
+      for (const row of chain.records.data) {
+        if (row.PE && typeof row.PE.underlyingValue !== 'undefined' && !Number.isNaN(Number(row.PE.underlyingValue))) {
+          return Number(row.PE.underlyingValue);
+        }
+        if (row.CE && typeof row.CE.underlyingValue !== 'undefined' && !Number.isNaN(Number(row.CE.underlyingValue))) {
+          return Number(row.CE.underlyingValue);
+        }
+        if (typeof row.underlyingValue !== 'undefined' && !Number.isNaN(Number(row.underlyingValue))) {
+          return Number(row.underlyingValue);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('spot detection fallback failed', e);
+  }
+  return null;
+}
+
+// Last price fallback: prefer lastPrice (>0), else bid/ask average
+function getLastPriceFromRow(row, side) {
+  if (!row) return null;
+  const obj = row[side];
+  if (!obj) return null;
+  if (typeof obj.lastPrice !== 'undefined' && obj.lastPrice !== null && !Number.isNaN(Number(obj.lastPrice)) && Number(obj.lastPrice) > 0) {
+    return Number(obj.lastPrice);
+  }
+  const bid = (typeof obj.bidprice !== 'undefined' && !Number.isNaN(Number(obj.bidprice))) ? Number(obj.bidprice) : null;
+  const ask = (typeof obj.askPrice !== 'undefined' && !Number.isNaN(Number(obj.askPrice))) ? Number(obj.askPrice) : null;
+  if (bid !== null && ask !== null) return (bid + ask) / 2;
+  if (bid !== null) return bid;
+  if (ask !== null) return ask;
+  return null;
+}
+
+// ----------------- NIFTY STRIKE SELECTION (50-step) -----------------
+function computeLegsFromSpot(spot) {
+  // normalize spot to number (handles strings/commas)
+  spot = Number(String(spot).replace(/,/g, ''));
+  if (!Number.isFinite(spot)) spot = 0;
+
+  // ITM CE = largest strike <= spot (floor to 50)
+  const itmCe = Math.floor(spot / 50) * 50;
+
+  // ITM PE = smallest strike >= spot:
+  // if spot exactly equals the 50 multiple -> use that strike; otherwise use itmCe + 50
+  const itmPe = (Math.abs(spot - itmCe) < 1e-9) ? itmCe : (itmCe + 50);
+
+  const otmCe = itmPe + 50;
+  const otmPe = itmCe - 50;
+
+  return [
+    { strike: itmCe, type: 'CE' },
+    { strike: itmPe, type: 'PE' },
+    { strike: otmCe, type: 'CE' },
+    { strike: otmPe, type: 'PE' }
+  ];
+}
+// ------------------------------------------------------------------
+
+// find strike row in chain
+function findStrikeData(chainData, strike) {
+  if (!chainData || !chainData.records || !Array.isArray(chainData.records.data)) return null;
+  return chainData.records.data.find(r => Number(r.strikePrice) === Number(strike)) || null;
+}
+
+// Storage (Nifty-specific keys)
+function saveSnapshot(dateKey, snapshot) { localStorage.setItem('nifty_snapshot_' + dateKey, JSON.stringify(snapshot)); }
+function loadSnapshot(dateKey) { const raw = localStorage.getItem('nifty_snapshot_' + dateKey); if (!raw) return null; try { return JSON.parse(raw); } catch(e){ return null; } }
+function clearSnapshot(dateKey) { localStorage.removeItem('nifty_snapshot_' + dateKey); }
+
+// normalize stored snapshot if strikes mismatch (same idea as BankNifty)
+async function normalizeSnapshotIfNeeded(snapshot) {
+  if (!snapshot) return snapshot;
+  try {
+    const expected = computeLegsFromSpot(snapshot.spot);
+    const existingStrikes = (snapshot.legs || []).map(l => `${l.strike}${l.type}`);
+    const expectedStrikes = expected.map(l => `${l.strike}${l.type}`);
+
+    const matches = expectedStrikes.every((s, i) => s === existingStrikes[i]);
+    if (matches) return snapshot;
+
+    // fetch chain and fill entries for expected strikes
+    const ch = await fetchOptionChain(PROXY_BASE);
+    const newLegData = [];
+    for (let i = 0; i < expected.length; i++) {
+      const leg = expected[i];
+      const row = findStrikeData(ch, leg.strike);
+      const lp = getLastPriceFromRow(row, leg.type);
+      newLegData.push({ strike: leg.strike, type: leg.type, entry: lp === null ? null : Number(lp) });
+    }
+
+    snapshot.legs = newLegData;
+    const key = snapshot.dateKey || formatDateKey(new Date());
+    saveSnapshot(key, snapshot);
+    updateMetaDisplay(snapshot);
+    console.info('Nifty snapshot normalized and updated.');
+    return snapshot;
+  } catch (err) {
+    console.error('normalizeSnapshotIfNeeded failed', err);
+    return snapshot;
+  }
+}
+
+// UI helpers
+function updateMetaDisplay(snapshot) {
+  if (!snapshot) {
+    $('capturedDate').textContent = '—';
+    $('capturedTime').textContent = '—';
+    $('capturedSpot').textContent = '—';
+    $('downloadCsv').disabled = true;
+    return;
+  }
+  const iso = snapshot.capturedISO;
+  const d = new Date(iso);
+  $('capturedDate').textContent = d.toLocaleDateString();
+  $('capturedTime').textContent = d.toLocaleTimeString();
+  $('capturedSpot').textContent = snapshot.spot;
+  $('downloadCsv').disabled = false;
+}
+
+// render live table (uses snapshot strikes if exists)
+function renderLive(legs, livePrices, entrySnapshot, lotSize, qty) {
+  const tbody = document.querySelector('#liveTable tbody');
+  tbody.innerHTML = '';
+  let total = 0;
+  legs.forEach((leg, i) => {
+    const labelStrike = `${leg.strike}${leg.type}`;
+    const entry = entrySnapshot && entrySnapshot.legs && entrySnapshot.legs[i] ? entrySnapshot.legs[i].entry : null;
+    const live = (typeof livePrices[i] === 'number') ? livePrices[i] : null;
+    let pnlPerContract = null;
+    if (entry !== null && live !== null) pnlPerContract = (live - entry); // long by default
+    const pnlTotal = (pnlPerContract !== null) ? pnlPerContract * Number(lotSize) * Number(qty) : null;
+    total += pnlTotal || 0;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Leg ${i+1}</td>
+      <td>${labelStrike}</td>
+      <td>${entry===null? '—' : entry.toFixed(2)}</td>
+      <td>${live===null? '—' : live.toFixed(2)}</td>
+      <td class="${pnlPerContract>=0?'green':'red'}">${pnlPerContract===null? '—' : pnlPerContract.toFixed(2)}</td>
+      <td class="${pnlTotal>=0?'green':'red'}">${pnlTotal===null? '—' : pnlTotal.toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+  });
+  $('totalPnl').textContent = total.toFixed(2);
+}
+
+// CSV download with live PnL calculation at click time
+async function downloadSnapshotCsvWithPnl(snapshot) {
+  if (!snapshot) return;
+  try {
+    const ch = await fetchOptionChain(PROXY_BASE);
+    const displayLegs = snapshot.legs.map(l => ({ strike: l.strike, type: l.type }));
+    const livePrices = [];
+    for (let i = 0; i < displayLegs.length; i++) {
+      const r = findStrikeData(ch, displayLegs[i].strike);
+      const lp = getLastPriceFromRow(r, displayLegs[i].type);
+      livePrices.push(lp === null ? null : Number(lp));
+    }
+
+    const lotSize = Number($('lotSize').value || 1);
+    const qty = Number($('qty').value || 1);
+
+    const headers = ['capturedISO','capturedSpot','leg','strike','type','entry','live','pnl_per_contract','pnl_total'];
+    const rows = [];
+    let totalPnl = 0;
+    snapshot.legs.forEach((leg, i) => {
+      const entry = (leg.entry===null? '' : Number(leg.entry).toFixed(2));
+      const live = (typeof livePrices[i] === 'number') ? livePrices[i] : '';
+      let pnlPerContract = '';
+      let pnlTotal = '';
+      if (entry !== '' && live !== '') {
+        pnlPerContract = (Number(live) - Number(entry)).toFixed(2);
+        pnlTotal = (Number(pnlPerContract) * lotSize * qty).toFixed(2);
+        totalPnl += Number(pnlTotal);
+      }
+      rows.push([snapshot.capturedISO, snapshot.spot, `Leg ${i+1}`, leg.strike, leg.type, entry, (live === '' ? '' : live.toFixed(2)), pnlPerContract, pnlTotal]);
+    });
+    rows.push([snapshot.capturedISO, snapshot.spot, 'TOTAL', '', '', '', '', '', totalPnl.toFixed(2)]);
+
+    const csvLines = [headers.join(',')].concat(rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')));
+    const csv = csvLines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const todayKey = snapshot.dateKey || formatDateKey(new Date());
+    a.href = url;
+    a.download = `nifty_snapshot_${todayKey}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    $('status').textContent = 'CSV download failed: ' + (err.message || err);
+  }
+}
+
+// Core flows
+let liveTimer = null;
+let autoCaptureFired = false;
+
+async function captureSnapshotNow() {
+  $('status').textContent = 'Fetching chain…';
+  try {
+    const ch = await fetchOptionChain(PROXY_BASE);
+    const spot = getSpotFromChain(ch);
+    if (!spot) {
+      $('status').textContent = 'Failed to detect underlying spot from chain.';
+      console.warn('chain preview', ch && typeof ch === 'object' ? JSON.stringify(ch).slice(0,1000) : ch);
+      return;
+    }
+    const legsDef = computeLegsFromSpot(spot);
+    const legData = legsDef.map(l => ({ strike: l.strike, type: l.type, entry: null }));
+    for (let i=0;i<legsDef.length;i++){
+      const r = findStrikeData(ch, legsDef[i].strike);
+      const lp = getLastPriceFromRow(r, legsDef[i].type);
+      legData[i].entry = (lp===null)?null:Number(lp);
+    }
+    const now = istNow();
+    const dateKey = formatDateKey(now);
+    const snapshot = { dateKey, capturedISO: now.toISOString(), spot, legs: legData };
+    saveSnapshot(dateKey, snapshot);
+    updateMetaDisplay(snapshot);
+    $('status').textContent = 'Snapshot saved for ' + dateKey + ' (spot ' + spot + ')';
+  } catch (err) {
+    console.error(err);
+    $('status').textContent = 'Error: ' + (err.message || err);
+  }
+}
+
+async function fetchLiveAndRender() {
+  try {
+    const ch = await fetchOptionChain(PROXY_BASE);
+    const spot = getSpotFromChain(ch) || (ch.records && ch.records.data && ch.records.data.length ? (ch.records.data[0].CE && ch.records.data[0].CE.underlyingValue ? ch.records.data[0].CE.underlyingValue : (ch.records.data[0].PE && ch.records.data[0].PE.underlyingValue ? ch.records.data[0].PE.underlyingValue : null)) : null);
+    const nowKey = formatDateKey(istNow());
+    const snapshot = loadSnapshot(nowKey);
+    let displayLegs = computeLegsFromSpot(spot || (snapshot && snapshot.spot) || 0);
+    if (snapshot && Array.isArray(snapshot.legs)) displayLegs = snapshot.legs.map(l => ({ strike: l.strike, type: l.type }));
+    const livePrices = [];
+    for (let i=0;i<displayLegs.length;i++){
+      const r = findStrikeData(ch, displayLegs[i].strike);
+      const lp = getLastPriceFromRow(r, displayLegs[i].type);
+      livePrices.push(lp === null ? null : Number(lp));
+    }
+    const lotSize = Number($('lotSize').value || 1);
+    const qty = Number($('qty').value || 1);
+    renderLive(displayLegs, livePrices, snapshot, lotSize, qty);
+  } catch (err) {
+    console.error(err);
+    $('status').textContent = 'Live fetch error: ' + (err.message || err);
+  }
+}
+
+// Auto-capture at 09:20 IST
+function scheduleAutoCapture() {
+  const check = () => {
+    const now = istNow();
+    const hh = now.getHours();
+    const mm = now.getMinutes();
+    const dateKey = formatDateKey(now);
+    if (hh === 9 && mm === 20 && !autoCaptureFired) {
+      if (!loadSnapshot(dateKey)) {
+        captureSnapshotNow();
+      } else {
+        $('status').textContent = 'Snapshot already present for today.';
+      }
+      autoCaptureFired = true;
+    }
+  };
+  setInterval(check, 10*1000);
+}
+
+// Boot — normalize stored snapshot if needed, then start UI
+document.addEventListener('DOMContentLoaded', async () => {
+  const dateKey = formatDateKey(istNow());
+  let existing = loadSnapshot(dateKey);
+
+  if (existing) {
+    // normalize if old strikes exist
+    existing = await normalizeSnapshotIfNeeded(existing);
+  }
+
+  updateMetaDisplay(existing);
+
+  $('capNow').addEventListener('click', async () => { await captureSnapshotNow(); });
+  $('clearSnap').addEventListener('click', () => {
+    const k = formatDateKey(istNow());
+    clearSnapshot(k);
+    updateMetaDisplay(null);
+    $('status').textContent = 'Snapshot cleared for ' + k;
+  });
+
+  $('downloadCsv').addEventListener('click', async () => {
+    const k = formatDateKey(istNow());
+    const snap = loadSnapshot(k);
+    if (!snap) { $('status').textContent = 'No snapshot to download for today.'; return; }
+    await downloadSnapshotCsvWithPnl(snap);
+  });
+
+  // initial live fetch and interval
+  fetchLiveAndRender();
+  let intervalSec = Number($('interval').value || 5);
+  liveTimer = setInterval(fetchLiveAndRender, Math.max(1, intervalSec) * 1000);
+  $('interval').addEventListener('change', () => {
+    clearInterval(liveTimer);
+    const sec = Math.max(1, Number($('interval').value || 5));
+    liveTimer = setInterval(fetchLiveAndRender, sec * 1000);
+  });
+
+  scheduleAutoCapture();
+});
+</script>
+</body>
+</html>
