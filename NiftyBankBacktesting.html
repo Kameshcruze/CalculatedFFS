@@ -109,10 +109,13 @@
 <script>
 /* Config */
 const PROXY_BASE = 'https://nse-proxy-advanced.kameshravirks.workers.dev'; // hidden from UI
-const TARGET_ENDPOINT = 'https://www.nseindia.com/api/option-chain-indices?symbol=BANKNIFTY';
+const TYPE = "Indices";
+const SYMBOL = "BANKNIFTY";
+const date = ["30-Dec-2025","27-Jan-2026","24-Feb-2026","31-Mar-2026","30-Jun-2026","29-Sep-2026"];
+const TARGET_ENDPOINT = 'https://www.nseindia.com/api/option-chain-v3';
 
 const $ = id => document.getElementById(id);
-const formatDateKey = (d = new Date()) => {
+const formatDateKey = (d = new Date()) => { 
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
   const day = String(d.getDate()).padStart(2,'0');
@@ -121,9 +124,14 @@ const formatDateKey = (d = new Date()) => {
 function istNow(){ return new Date(); }
 
 // Build proxy URL expecting ?url=
-function buildOptionChainUrl(proxyBase) {
+// expiryIndex = 0 uses first date, 1 uses second, etc.
+function buildOptionChainUrl(proxyBase, expiryIndex = 0) {
+  const expiry = date[expiryIndex];           // e.g. "27-Jan-2026"
+  const finalEndpoint =
+    `${TARGET_ENDPOINT}?type=${TYPE}&symbol=${SYMBOL}&expiry=${expiry}`;
+
   proxyBase = proxyBase.replace(/\/+$/, '');
-  return proxyBase + '/?url=' + encodeURIComponent(TARGET_ENDPOINT);
+  return proxyBase + '/?url=' + encodeURIComponent(finalEndpoint);
 }
 
 // Fetch JSON via proxy (robust)
@@ -502,3 +510,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
+
