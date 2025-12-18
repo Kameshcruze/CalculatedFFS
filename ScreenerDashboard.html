@@ -221,6 +221,19 @@
   .stock-link{color:#66fcf1;cursor:pointer;font-weight:600;}
   .stock-link:hover{color:#00bcd4;text-decoration:underline;}
 
+  /* === COMMON STOCK HIGHLIGHT (High Powered + Intraday Boost) === */
+.common-stock {
+  background: linear-gradient(
+    90deg,
+    rgba(22, 100, 255, 0.28),
+    rgba(22, 100, 255, 0.08)
+  );
+  border-left: 4px solid #1664ff;
+  padding-left: 6px;
+  border-radius: 4px;
+}
+
+
   /* ---------- Fix sector table column widths ---------- */
   .sector-panel table {
     table-layout: auto !important;
@@ -910,6 +923,51 @@ function renderBoost(rows, s2) {
   addSearch(document.getElementById('searchBoost'), document.getElementById('clearBoost'), body);
 }
 
+/* === Highlight stocks common in High Powered & Intraday Boost (Top 11) === */
+function highlightCommonTopStocks() {
+  const highRows = document.querySelectorAll("#highBody tr");
+  const boostRows = document.querySelectorAll("#boostBody tr");
+
+  const highSet = new Set();
+  const boostSet = new Set();
+
+  // Collect top 11 High Powered stocks
+  highRows.forEach((row, i) => {
+    if (i < 11) {
+      const sym = row.cells[0]?.innerText.trim().toUpperCase();
+      if (sym) highSet.add(sym);
+    }
+  });
+
+  // Collect top 11 Intraday Boost stocks
+  boostRows.forEach((row, i) => {
+    if (i < 11) {
+      const sym = row.cells[0]?.innerText.trim().toUpperCase();
+      if (sym) boostSet.add(sym);
+    }
+  });
+
+  // Find common symbols
+  const common = [...highSet].filter(s => boostSet.has(s));
+
+  // Apply highlight to High Powered table
+  highRows.forEach(row => {
+    const cell = row.cells[0];
+    if (!cell) return;
+    const sym = cell.innerText.trim().toUpperCase();
+    cell.classList.toggle("common-stock", common.includes(sym));
+  });
+
+  // Apply highlight to Intraday Boost table
+  boostRows.forEach(row => {
+    const cell = row.cells[0];
+    if (!cell) return;
+    const sym = cell.innerText.trim().toUpperCase();
+    cell.classList.toggle("common-stock", common.includes(sym));
+  });
+}
+
+
 function renderSectors(rows, s2, sectors) {
   const container = document.getElementById('screeners'); container.innerHTML = '';
   const grouped = {};
@@ -955,6 +1013,8 @@ async function buildAll(){
     renderHigh(mainRows, s2);
     renderBoost(mainRows, s2);
     renderSectors(mainRows, s2, sectors);
+   
+    highlightCommonTopStocks();
   } catch (err){
     console.error('buildAll error', err);
   }
