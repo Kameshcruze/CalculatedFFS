@@ -15,7 +15,7 @@
 <meta name="description" content="Free Intraday Stock Selector for NSE traders. Get real-time breakout stocks, sector strength, volume spikes and high-momentum picks updated automatically. Perfect for intraday day traders looking for reliable stock selection.">
 
 <!-- Keywords -->
-<meta name="keywords" content="stock selector, 132 free scanner, intraday screener, NSE stock screener, stock selection tool, free stock selector, intraday breakout stocks, live NSE screener, stock picking tool, day trading India, volume breakout screener">
+<meta name="keywords" content="stock selector, tredcode,tradify, stock burner,booming bulls, indian traders,132 free scanner, intraday screener, NSE stock screener, stock selection tool, free stock selector, intraday breakout stocks, live NSE screener, stock picking tool, day trading India, volume breakout screener">
 
 <!-- Canonical URL -->
 <link rel="canonical" href="https://intradaytockselector.pages.dev/"/>
@@ -58,6 +58,73 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+
+  
+
+/* ===== MARKET STRIP ===== */
+.market-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+}
+
+.strip-left {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.idx {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.idx .name {
+  color: #9fe7e2;
+  font-weight: 600;
+}
+
+.idx .price {
+  color: #e6eef8;
+  font-weight: 700;
+}
+
+.idx .chg {
+  font-weight: 600;
+}
+
+.idx-up { color: #00ff99; }
+.idx-down { color: #ff6b6b; }
+
+.idx:hover {
+  color: #66fcf1;
+}
+
+/* Market status */
+.strip-right {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.market-open {
+  background: rgba(0,200,83,0.15);
+  color: #00ff99;
+}
+
+.market-closed {
+  background: rgba(255,107,107,0.15);
+  color: #ff6b6b;
+}
+
+
   /* ---------- Combined Styles (TrialUI + OI Clock) ---------- */
 
   /* ---------- Global ---------- */
@@ -93,7 +160,7 @@
   border: 1px solid rgba(255,255,255,0.04);   /* subtle thin border */
   box-shadow: 0 6px 18px rgba(0,0,0,0.45);
   border-radius: 10px;
-  padding: 14px;
+  padding: 10px;
   margin-bottom: 14px;
 }
 
@@ -116,6 +183,8 @@
   #screenerSection .panel { padding: 10px; }
   #screenerSection table { font-size: 0.86rem; }
 }
+
+
 
   
 #oiClockSection {
@@ -478,6 +547,40 @@
 
 <div class="container">
 
+  <!-- ===== MARKET INDEX STRIP ===== -->
+<div id="marketStrip" class="panel market-strip">
+  <div class="strip-left">
+    <div class="idx" data-tv="NIFTY">
+      <span class="name">NIFTY</span>
+      <span class="price" id="niftyPrice">--</span>
+      <span class="chg" id="niftyChg">--</span>
+    </div>
+
+    <div class="idx" data-tv="BANKNIFTY">
+      <span class="name">BANKNIFTY</span>
+      <span class="price" id="bankPrice">--</span>
+      <span class="chg" id="bankChg">--</span>
+    </div>
+
+<div class="idx" data-tv="CNXFINANCE">
+      <span class="name">FINNIFTY</span>
+      <span class="price" id="finPrice">--</span>
+      <span class="chg" id="finChg">--</span>
+    </div>
+
+    <div class="idx vix">
+      <span class="name">INDIA VIX</span>
+      <span class="price" id="vixPrice">--</span>
+      <span class="chg" id="vixChg">--</span>
+    </div>
+  </div>
+
+  <div class="strip-right" id="marketStatus">
+    MARKET --
+  </div>
+</div>
+  <!-- ===== END MARKET INDEX STRIP ===== -->
+
     <!-- DASHBOARD (Sector Performance Chart Integrated) -->
     <section id="dashboardSection" style="display:none;">
       <div class="panel" style="text-align:center;">
@@ -749,6 +852,87 @@ function setTimeNav(){
 }
 setTimeNav();
 setInterval(setTimeNav, 1000);
+
+/* ===== MARKET STRIP LOGIC ===== */
+
+const INDEX_API =
+  PROXY_URL + encodeURIComponent("https://www.nseindia.com/api/allIndices");
+
+function isMarketOpen() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun,6=Sat
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return day >= 1 && day <= 5 && mins >= 555 && mins <= 930; // 9:15–15:30
+}
+
+function setMarketStatus() {
+  const el = document.getElementById("marketStatus");
+  if (isMarketOpen()) {
+    el.textContent = "MARKET OPEN";
+    el.className = "strip-right market-open";
+  } else {
+    el.textContent = "MARKET CLOSED";
+    el.className = "strip-right market-closed";
+  }
+}
+
+function openIndexTV(symbol) {
+  window.open(
+    `https://www.tradingview.com/chart/?symbol=NSE:${symbol}&interval=5`,
+    "_blank"
+  );
+}
+
+async function loadMarketStrip() {
+  try {
+    const r = await fetch(INDEX_API, { headers: { Accept: "application/json" } });
+    const json = await r.json();
+    const list = json.data || [];
+
+    function update(matchFn, priceId, chgId) {
+      const d = list.find(matchFn);
+      if (!d) return;
+
+      const chg = Number(d.percentChange);
+      document.getElementById(priceId).textContent =
+        Number(d.last).toFixed(2);
+      document.getElementById(chgId).innerHTML =
+        `<span class="${chg >= 0 ? "idx-up" : "idx-down"}">
+          ${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%
+        </span>`;
+    }
+
+    update(x => x.index === "NIFTY 50", "niftyPrice", "niftyChg");
+    update(x => x.index === "NIFTY BANK", "bankPrice", "bankChg");
+    update(x => (x.index || "").includes("FIN"), "finPrice", "finChg");
+    update(x => x.index === "INDIA VIX", "vixPrice", "vixChg");
+
+    setMarketStatus();
+
+  } catch (e) {
+    console.error("Market strip error", e);
+  }
+}
+
+/* Click handlers */
+document.addEventListener("click", function (e) {
+  const el = e.target.closest(".idx[data-tv]");
+  if (!el) return;
+
+  const symbol = el.dataset.tv;
+  if (!symbol) return;
+
+  window.open(
+    `https://www.tradingview.com/chart/?symbol=NSE:${symbol}&interval=5`,
+    "_blank"
+  );
+});
+
+/* Init + refresh */
+loadMarketStrip();
+setInterval(loadMarketStrip, 30000);
+setInterval(setMarketStatus, 60000);
+
 
 /* ---------- TrialUI (Screener + Index) JS ---------- */
 
